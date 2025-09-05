@@ -1,11 +1,10 @@
-import { NextResponse } from 'next/server';
-import { auth, googleProvider, signInWithEmailAndPassword, signInWithPopup } from '@/lib/firebase'; // Adjusted imports
+import { auth, googleProvider, signInWithEmailAndPassword, signInWithPopup } from '@lib/firebase';
 
 export async function POST(req) {
   try {
     const { email, password, isGoogle = false } = await req.json();
     if (!email || (isGoogle ? false : !password)) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+      return new Response(JSON.stringify({ error: 'Email and password are required' }), { status: 400 });
     }
 
     let userCredential;
@@ -16,9 +15,9 @@ export async function POST(req) {
     }
     const user = userCredential.user;
 
-    return NextResponse.json({ message: 'Login successful', uid: user.uid }, { status: 200 });
+    return new Response(JSON.stringify({ message: 'Login successful', uid: user.uid }), { status: 200 });
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return new Response(JSON.stringify({ error: error.message }), { status: 400 });
   }
 }

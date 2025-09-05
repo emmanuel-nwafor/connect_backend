@@ -1,4 +1,4 @@
-import { auth, googleProvider, signInWithEmailAndPassword, signInWithPopup } from '@lib/firebase';
+import { auth, googleProvider, signInWithEmailAndPassword, signInWithPopup } from '@/lib/firebase';
 
 export async function POST(req) {
   try {

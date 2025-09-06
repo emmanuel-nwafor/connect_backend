@@ -1,4 +1,5 @@
-import { auth, googleProvider, signInWithEmailAndPassword, signInWithPopup } from '@/lib/firebase';
+import { auth, googleProvider, signInWithEmailAndPassword, signInWithPopup, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export async function POST(req) {
   try {
@@ -15,7 +16,11 @@ export async function POST(req) {
     }
     const user = userCredential.user;
 
-    return new Response(JSON.stringify({ message: 'Login successful', uid: user.uid }), { status: 200 });
+    // Fetch user role from Firestore
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    const role = userDoc.exists() ? userDoc.data().role : 'user';
+
+    return new Response(JSON.stringify({ message: 'Login successful', uid: user.uid, role }), { status: 200 });
   } catch (error) {
     console.error('Login error:', error);
     return new Response(JSON.stringify({ error: error.message }), { status: 400 });

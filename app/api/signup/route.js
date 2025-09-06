@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth, googleProvider, createUserWithEmailAndPassword, signInWithPopup } from '@/lib/firebase'; // Adjusted imports
+import { auth, googleProvider, createUserWithEmailAndPassword, signInWithPopup } from '@/lib/firebase'; 
 
 export async function POST(req) {
   try {

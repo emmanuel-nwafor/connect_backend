@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import { db } from '@/lib//firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 export async function POST(req) {
   // Read the raw body once
@@ -24,6 +26,19 @@ export async function POST(req) {
   // Generate 4-digit OTP (1000 to 9999)
   const otp = Math.floor(1000 + Math.random() * 9000).toString().padStart(4, '0');
 
+  // Store OTP in Firestore
+  try {
+    await setDoc(doc(db, 'otp-verification', 'current-otp'), { // Adjust document ID as needed
+      otp,
+      email,
+      timestamp: new Date(),
+    });
+    console.log('OTP stored in Firestore:', { otp, email });
+  } catch (error) {
+    console.error('Failed to store OTP in Firestore:', error);
+    return new Response(JSON.stringify({ error: 'Failed to store OTP' }), { status: 500 });
+  }
+
   // Nodemailer setup (configure with your email service)
   const transporter = nodemailer.createTransport({
     service: 'gmail', // e.g., Gmail, or use your SMTP
@@ -33,12 +48,49 @@ export async function POST(req) {
     },
   });
 
+  // HTML Email Template
+  const emailTemplate = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+        .container { width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; }
+        .header { text-align: center; padding: 20px 0; }
+        .header img { max-width: 150px; }
+        .content { text-align: center; padding: 20px; }
+        .otp { font-size: 24px; font-weight: bold; color: #1e90ff; margin: 20px 0; }
+        .footer { text-align: center; font-size: 12px; color: #777; padding: 10px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <img src="https://res.cloudinary.com/dbczfoqnc/image/upload/v1757032861/Home-studio_logo-removebg-preview_gbq77s.png" alt="Home Studio Logo">
+        </div>
+        <div class="content">
+          <h2>Welcome to Home Studio!</h2>
+          <p>Thank you for signing up. Your One-Time Password (OTP) for verification is:</p>
+          <div class="otp">${otp}</div>
+          <p>This OTP is valid for 10 minutes. Please do not share it with anyone.</p>
+          <p>If you didn’t request this, please contact our support team immediately.</p>
+        </div>
+        <div class="footer">
+          <p>&copy; 2025 Home Studio. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
   try {
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
-      subject: 'Your OTP for Verification',
-      text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
+      subject: 'Your OTP for Home Studio Verification',
+      html: emailTemplate,
     });
     console.log('Email sent successfully to:', email);
     return new Response(JSON.stringify({ otp }), { status: 200 });

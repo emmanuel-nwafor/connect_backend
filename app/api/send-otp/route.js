@@ -57,7 +57,7 @@ export async function POST(req) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
-        .container { width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; }
+        .container { width: 100%; margin: 0 auto; background-color: #ffffff; padding: 20px; }
         .header { text-align: center; padding: 12px 0; }
         .header img { max-width: 150px; }
         .content { text-align: center; padding: 20px; }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth, googleProvider, createUserWithEmailAndPassword, signInWithPopup } from '@/lib/firebase'; 
+import { auth, googleProvider, createUserWithEmailAndPassword, signInWithPopup, db } from '@/lib/firebase'; 
+import { doc, setDoc } from 'firebase/firestore';
 
 export async function POST(req) {
   try {
@@ -30,9 +31,15 @@ export async function POST(req) {
     }
     const user = userCredential.user;
 
-    // Assign role (default to 'user')
-    const role = 'user';
-    // Note: Role assignment requires Admin SDK for custom claims
+    // Assign role based on email
+    const role = email === 'echinecherem729@gmail.com' ? 'admin' : 'user';
+
+    // Save user data to Firestore
+    await setDoc(doc(db, 'users', user.uid), {
+      email: user.email,
+      role: role,
+      createdAt: new Date().toISOString(),
+    });
 
     return NextResponse.json({ message: 'User created successfully', uid: user.uid, role }, { status: 201 });
   } catch (error) {

@@ -1,22 +1,45 @@
-// pages/api/upload.js (Next.js)
-import { v2 as cloudinary } from 'cloudinary';
+// pages/api/admin/save-lodge.js
+import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
+const firebaseConfig = {
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID,
+};
+
+let firebaseApp;
+if (!getApps().length) firebaseApp = initializeApp(firebaseConfig);
+else firebaseApp = getApps()[0];
+const db = getFirestore(firebaseApp);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  
+
   try {
-    const { file, folder } = req.body;
-    const uploaded = await cloudinary.uploader.upload(file, { folder });
-    res.status(200).json({ url: uploaded.secure_url });
+    const { title, description, rentFee, imageUrl, videoUrl, imagePublicId, videoPublicId } = req.body || {};
+    if (!title || !description || !rentFee || !imageUrl || !videoUrl) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const lodge = {
+      title,
+      description,
+      rentFee,
+      imageUrl,
+      videoUrl,
+      imagePublicId: imagePublicId || null,
+      videoPublicId: videoPublicId || null,
+      createdAt: serverTimestamp(),
+    };
+
+    const docRef = await addDoc(collection(db, 'lodges'), lodge);
+    return res.status(200).json({ message: 'Saved', lodgeId: docRef.id });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Upload failed' });
+    console.error('save-lodge error', err);
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 }

@@ -1,5 +1,4 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import {  collection, getDocs } from 'firebase/firestore';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -10,9 +9,6 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
 export async function GET() {
   try {

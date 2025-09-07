@@ -59,14 +59,14 @@ export default async function handler(req, res) {
 
   try {
     // Wrap multer in a promise to use async/await
-    const files = await new Promise((resolve, reject) => {
+    const { files, fields } = await new Promise((resolve, reject) => {
       upload.array("files", 12)(req, {}, (err) => {
         if (err) return reject(err);
-        resolve(req.files || []);
+        resolve({ files: req.files || [], fields: req.body || {} });
       });
     });
 
-    const { title, description, rentFee } = req.body || {};
+    const { title, description, rentFee } = fields;
     if (!title || !description || !rentFee) {
       return res.status(400).json({ error: "title, description and rentFee are required" });
     }

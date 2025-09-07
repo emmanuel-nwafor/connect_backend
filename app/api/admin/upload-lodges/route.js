@@ -1,120 +1,68 @@
-// pages/api/admin/upload-lodges.js
-import multer from "multer";
-import { v2 as cloudinary } from "cloudinary";
-import streamifier from "streamifier";
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { IncomingForm } from 'formidable';
+import fs from 'fs';
+import { v2 as cloudinary } from 'cloudinary';
 
-// ---- Multer setup (memory storage, no temp files)
-const upload = multer({ storage: multer.memoryStorage() });
-
-// ---- Firebase Client SDK init ----
-const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID,
-};
-
-let firebaseApp;
-if (!getApps().length) {
-  firebaseApp = initializeApp(firebaseConfig);
-} else {
-  firebaseApp = getApps()[0];
-}
-const db = getFirestore(firebaseApp);
-
-// ---- Cloudinary config ----
+// Cloudinary config from env
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_NAME,
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_SECRET_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ---- Helper: upload buffer to Cloudinary ----
-function uploadBufferToCloudinary(buffer, options = {}) {
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(options, (err, result) => {
-      if (err) return reject(err);
-      resolve(result);
-    });
-    streamifier.createReadStream(buffer).pipe(uploadStream);
-  });
-}
-
-// ---- Disable Next.js default body parsing ----
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false, // Important: disable default body parser
   },
 };
 
-// ---- API Handler ----
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    // Wrap multer in a promise to use async/await
-    const { files, fields } = await new Promise((resolve, reject) => {
-      upload.array("files", 12)(req, {}, (err) => {
-        if (err) return reject(err);
-        resolve({ files: req.files || [], fields: req.body || {} });
+  const form = new IncomingForm({ multiples: true });
+
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      console.error('Form parse error:', err);
+      return res.status(500).json({ error: 'Failed to parse form' });
+    }
+
+    try {
+      const { title, description, rentFee } = fields;
+
+      if (!title || !description || !rentFee) {
+        return res.status(400).json({ error: 'Missing fields' });
+      }
+
+      const uploadedFiles = [];
+
+      const fileArray = Array.isArray(files.files) ? files.files : [files.files];
+
+      for (const file of fileArray) {
+        const result = await cloudinary.uploader.upload(file.filepath, {
+          resource_type: file.mimetype.startsWith('video') ? 'video' : 'image',
+          folder: 'lodges', // optional: store all uploads in 'lodges' folder
+        });
+
+        uploadedFiles.push({
+          url: result.secure_url,
+          type: file.mimetype,
+        });
+
+        // delete temp file
+        fs.unlinkSync(file.filepath);
+      }
+
+      // Normally, save lodge info in DB here (title, description, rentFee, uploadedFiles)
+      // For demo, we return a lodgeId and uploaded URLs
+      return res.status(200).json({
+        lodgeId: Math.floor(Math.random() * 1000000),
+        files: uploadedFiles,
       });
-    });
-
-    const { title, description, rentFee } = fields;
-    if (!title || !description || !rentFee) {
-      return res.status(400).json({ error: "title, description and rentFee are required" });
+    } catch (uploadError) {
+      console.error('Upload error:', uploadError);
+      return res.status(500).json({ error: 'Upload failed' });
     }
-
-    if (!files.length) {
-      return res.status(400).json({ error: "At least one file is required" });
-    }
-
-    const imageUrls = [];
-    const videoUrls = [];
-
-    for (const file of files) {
-      const mimetype = file.mimetype || "";
-      const isImage = mimetype.startsWith("image/");
-      const isVideo = mimetype.startsWith("video/");
-
-      const folder = isImage ? "lodges/images" : isVideo ? "lodges/videos" : "lodges/others";
-
-      const options = {
-        folder,
-        resource_type: isVideo ? "video" : "image",
-      };
-
-      const result = await uploadBufferToCloudinary(file.buffer, options);
-
-      if (isImage) imageUrls.push(result.secure_url);
-      else if (isVideo) videoUrls.push(result.secure_url);
-      else imageUrls.push(result.secure_url);
-    }
-
-    const lodgeData = {
-      title,
-      description,
-      rentFee,
-      imageUrls,
-      videoUrls,
-      createdAt: serverTimestamp(),
-    };
-
-    const docRef = await addDoc(collection(db, "lodges"), lodgeData);
-
-    return res.status(200).json({
-      message: "Lodge uploaded successfully",
-      lodgeId: docRef.id,
-      lodge: { id: docRef.id, ...lodgeData },
-    });
-  } catch (err) {
-    console.error("Upload error:", err);
-    return res.status(500).json({ error: err.message || "Upload failed" });
-  }
+  });
 }

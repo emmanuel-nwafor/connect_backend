@@ -1,20 +1,14 @@
 // pages/api/admin/upload-lodges.js
-import nextConnect from 'next-connect';
-import multer from 'multer';
-import { v2 as cloudinary } from 'cloudinary';
-import streamifier from 'streamifier';
-import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
+import streamifier from "streamifier";
+import { initializeApp, getApps } from "firebase/app";
+import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore";
 
+// ---- Multer setup (memory storage, no temp files)
 const upload = multer({ storage: multer.memoryStorage() });
 
-/**
- * NOTE: using client Firebase SDK on server (per your request).
- * This relies on your firebase config env vars (not the admin SDK).
- * Ensure Firestore rules allow server-side writes with that config.
- */
-
-// Initialize Firebase (only once)
+// ---- Firebase Client SDK init ----
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
   authDomain: process.env.FIREBASE_AUTH_DOMAIN,
@@ -32,14 +26,14 @@ if (!getApps().length) {
 }
 const db = getFirestore(firebaseApp);
 
-// Cloudinary configuration (uses the names you provided in .env)
+// ---- Cloudinary config ----
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_SECRET_KEY, // note: your .env uses CLOUDINARY_SECRET_KEY
+  api_secret: process.env.CLOUDINARY_SECRET_KEY,
 });
 
-// helper: upload a buffer via cloudinary upload_stream
+// ---- Helper: upload buffer to Cloudinary ----
 function uploadBufferToCloudinary(buffer, options = {}) {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(options, (err, result) => {
@@ -50,52 +44,52 @@ function uploadBufferToCloudinary(buffer, options = {}) {
   });
 }
 
-const handler = nextConnect({
-  onError(err, req, res) {
-    console.error('API error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+// ---- Disable Next.js default body parsing ----
+export const config = {
+  api: {
+    bodyParser: false,
   },
-  onNoMatch(req, res) {
-    res.status(405).json({ error: `Method ${req.method} Not Allowed` });
-  },
-});
+};
 
-// Accept 'files' up to 12 (adjust if needed)
-handler.use(upload.array('files', 12));
+// ---- API Handler ----
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+  }
 
-handler.post(async (req, res) => {
   try {
-    // multer has populated req.body (text fields) and req.files (buffers)
-    const { title, description, rentFee } = req.body || {};
+    // Wrap multer in a promise to use async/await
+    const files = await new Promise((resolve, reject) => {
+      upload.array("files", 12)(req, {}, (err) => {
+        if (err) return reject(err);
+        resolve(req.files || []);
+      });
+    });
 
+    const { title, description, rentFee } = req.body || {};
     if (!title || !description || !rentFee) {
-      return res.status(400).json({ error: 'title, description and rentFee are required' });
+      return res.status(400).json({ error: "title, description and rentFee are required" });
     }
 
-    const files = req.files || [];
-
     if (!files.length) {
-      return res.status(400).json({ error: 'At least one file is required' });
+      return res.status(400).json({ error: "At least one file is required" });
     }
 
     const imageUrls = [];
     const videoUrls = [];
 
-    // Upload each file to Cloudinary
     for (const file of files) {
-      const mimetype = file.mimetype || '';
-      const isImage = mimetype.startsWith('image/');
-      const isVideo = mimetype.startsWith('video/');
+      const mimetype = file.mimetype || "";
+      const isImage = mimetype.startsWith("image/");
+      const isVideo = mimetype.startsWith("video/");
 
-      const folder = isImage ? 'lodges/images' : isVideo ? 'lodges/videos' : 'lodges/others';
+      const folder = isImage ? "lodges/images" : isVideo ? "lodges/videos" : "lodges/others";
 
       const options = {
         folder,
-        resource_type: isVideo ? 'video' : 'image',
-        // optional: set eager transformations, quality, etc.
+        resource_type: isVideo ? "video" : "image",
       };
 
-      // upload the buffer
       const result = await uploadBufferToCloudinary(file.buffer, options);
 
       if (isImage) imageUrls.push(result.secure_url);
@@ -103,7 +97,6 @@ handler.post(async (req, res) => {
       else imageUrls.push(result.secure_url);
     }
 
-    // Compose lodge record and write to Firestore (client SDK)
     const lodgeData = {
       title,
       description,
@@ -113,23 +106,15 @@ handler.post(async (req, res) => {
       createdAt: serverTimestamp(),
     };
 
-    const docRef = await addDoc(collection(db, 'lodges'), lodgeData);
+    const docRef = await addDoc(collection(db, "lodges"), lodgeData);
 
     return res.status(200).json({
-      message: 'Lodge uploaded successfully',
+      message: "Lodge uploaded successfully",
       lodgeId: docRef.id,
       lodge: { id: docRef.id, ...lodgeData },
     });
   } catch (err) {
-    console.error('Upload error:', err);
-    return res.status(500).json({ error: err.message || 'Upload failed' });
+    console.error("Upload error:", err);
+    return res.status(500).json({ error: err.message || "Upload failed" });
   }
-});
-
-export const config = {
-  api: {
-    bodyParser: false, // Important: multer handles multipart parsing
-  },
-};
-
-export default handler;
+}

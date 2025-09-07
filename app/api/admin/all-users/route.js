@@ -1,4 +1,6 @@
-import {  collection, getDocs } from 'firebase/firestore';
+// lib/firebaseAdmin.js (or any folder you prefer)
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -9,6 +11,10 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
+// Initialize Firebase only once
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const db = getFirestore(app);
 
 export async function GET() {
   try {

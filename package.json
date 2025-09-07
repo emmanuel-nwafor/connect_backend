@@ -12,6 +12,7 @@
     "cloudinary": "^2.7.0",
     "firebase": "^12.2.1",
     "formidable": "^3.5.4",
+    "formidable-serverless": "^1.1.1",
     "multer": "^2.0.2",
     "next": "15.5.2",
     "next-cloudinary": "^6.16.0",

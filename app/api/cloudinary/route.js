@@ -1,39 +1,30 @@
-import { IncomingForm } from "formidable";
-import cloudinary from "cloudinary";
+import { v2 as cloudinary } from "cloudinary";
 
-// Configure Cloudinary
-cloudinary.v2.config({
+cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export const config = {
-  api: {
-    bodyParser: false, // Important for file uploads
-  },
-};
-
 export async function POST(req) {
-  return new Promise((resolve, reject) => {
-    const form = new IncomingForm();
+  try {
+    // Read as text first to debug base64 issues
+    const text = await req.text();
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400 });
+    }
 
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        console.error("Form parse error:", err);
-        return resolve(new Response(JSON.stringify({ error: "Form parse failed" }), { status: 500 }));
-      }
+    const { file, folder } = body;
 
-      try {
-        const file = files.file; // The uploaded file
-        const folder = fields.folder || "default";
+    if (!file) return new Response(JSON.stringify({ error: "No file provided" }), { status: 400 });
 
-        const uploaded = await cloudinary.v2.uploader.upload(file.filepath, { folder });
-        resolve(new Response(JSON.stringify({ url: uploaded.secure_url }), { status: 200 }));
-      } catch (err) {
-        console.error("Cloudinary upload failed:", err);
-        resolve(new Response(JSON.stringify({ error: "Upload failed" }), { status: 500 }));
-      }
-    });
-  });
+    const uploaded = await cloudinary.uploader.upload(file, { folder });
+    return new Response(JSON.stringify({ url: uploaded.secure_url }), { status: 200 });
+  } catch (err) {
+    console.error("Cloudinary upload failed:", err);
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  }
 }

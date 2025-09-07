@@ -1,20 +1,19 @@
-// pages/api/admin/save-lodge.js
-import { db } from "@/lib/firebase"; 
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+// app/api/admin/save-lodge/route.js
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ success: false, error: "Method not allowed" });
-  }
-
+export async function POST(req) {
   try {
-    const { title, description, rentFee, imageUrl, videoUrl } = req.body;
+    const body = await req.json(); // parse JSON body
+
+    const { title, description, rentFee, imageUrl, videoUrl } = body;
 
     if (!title || !description || !rentFee || !imageUrl) {
-      return res.status(400).json({ success: false, error: "Missing required fields" });
+      return new Response(JSON.stringify({ success: false, error: 'Missing required fields' }), { status: 400 });
     }
 
-    const docRef = await addDoc(collection(db, "lodges"), {
+    // Save lodge to Firestore
+    const docRef = await addDoc(collection(db, 'lodges'), {
       title,
       description,
       rentFee,
@@ -23,9 +22,9 @@ export default async function handler(req, res) {
       createdAt: serverTimestamp(),
     });
 
-    return res.status(200).json({ success: true, id: docRef.id });
+    return new Response(JSON.stringify({ success: true, id: docRef.id }), { status: 201 });
   } catch (err) {
-    console.error("Firestore save failed:", err);
-    return res.status(500).json({ success: false, error: err.message });
+    console.error('Firestore save failed:', err);
+    return new Response(JSON.stringify({ success: false, error: err.message || 'Unknown error' }), { status: 500 });
   }
 }

@@ -8,7 +8,6 @@ cloudinary.config({
 
 export async function POST(req) {
   try {
-    // Read as text first to debug base64 issues
     const text = await req.text();
     let body;
     try {
@@ -18,10 +17,15 @@ export async function POST(req) {
     }
 
     const { file, folder } = body;
-
     if (!file) return new Response(JSON.stringify({ error: "No file provided" }), { status: 400 });
 
-    const uploaded = await cloudinary.uploader.upload(file, { folder });
+    // Use resource_type: "auto" to handle images & videos
+    const uploaded = await cloudinary.uploader.upload(file, {
+      folder,
+      resource_type: "auto",
+      upload_preset: process.env.CLOUDINARY_UNSIGNED_PRESET, // optional if using unsigned
+    });
+
     return new Response(JSON.stringify({ url: uploaded.secure_url }), { status: 200 });
   } catch (err) {
     console.error("Cloudinary upload failed:", err);

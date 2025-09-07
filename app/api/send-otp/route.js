@@ -28,7 +28,7 @@ export async function POST(req) {
 
   // Store OTP in Firestore
   try {
-    await setDoc(doc(db, 'otp-verification', 'current-otp'), { // Adjust document ID as needed
+    await setDoc(doc(db, 'otp-verification', 'current-otp'), {
       otp,
       email,
       timestamp: new Date(),
@@ -41,7 +41,7 @@ export async function POST(req) {
 
   // Nodemailer setup (configure with your email service)
   const transporter = nodemailer.createTransport({
-    service: 'gmail', // e.g., Gmail, or use your SMTP
+    service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
@@ -57,28 +57,44 @@ export async function POST(req) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
-        .container { width: 100%; margin: 0 auto; background-color: #ffffff; padding: 20px; }
+        .container { width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 20px; box-sizing: border-box; }
         .header { text-align: center; padding: 12px 0; }
-        .header img { max-width: 150px; }
+        .header img { max-width: 150px; height: auto; }
         .content { text-align: center; padding: 20px; }
         .otp { font-size: 24px; font-weight: bold; color: #1e90ff; margin: 20px 0; }
         .footer { text-align: center; font-size: 12px; color: #777; padding: 10px 0; }
+
+        @media (max-width: 600px) {
+          .container { padding: 15px; }
+          .header img { max-width: 120px; }
+          .content { padding: 15px; }
+          .otp { font-size: 20px; }
+          h2 { font-size: 20px; }
+          p { font-size: 14px; }
+        }
+
+        @media (max-width: 400px) {
+          .header img { max-width: 100px; }
+          .otp { font-size: 18px; }
+          h2 { font-size: 18px; }
+          p { font-size: 12px; }
+        }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <img src="https://res.cloudinary.com/dbczfoqnc/image/upload/v1757032861/Home-studio_logo-removebg-preview_gbq77s.png" alt="Home Studio Logo">
+          <img src="https://res.cloudinary.com/dbczfoqnc/image/upload/v1757032861/Home-studio_logo-removebg-preview_gbq77s.png" alt="CONNECT Logo">
         </div>
         <div class="content">
-          <h2>Welcome to Home Studio!</h2>
+          <h2>Welcome to CONNECT!</h2>
           <p>Thank you for signing up. Your One-Time Password (OTP) for verification is:</p>
           <div class="otp">${otp}</div>
           <p>This OTP is valid for 10 minutes. Please do not share it with anyone.</p>
           <p>If you didn’t request this, please contact our support team immediately.</p>
         </div>
         <div class="footer">
-          <p>&copy; 2025 Home Studio. All rights reserved.</p>
+          <p>&copy; 2025 CONNECT. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -89,7 +105,7 @@ export async function POST(req) {
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
-      subject: 'Your OTP for Home Studio Verification',
+      subject: 'Your OTP for CONNECT Verification',
       html: emailTemplate,
     });
     console.log('Email sent successfully to:', email);

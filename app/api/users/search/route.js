@@ -11,14 +11,14 @@ export async function GET(req) {
 
   try {
     // Users Collection
-    const usersCol = collection(db, "users");
-    const usersQuery = query(
-      usersCol,
-      where("name_lowercase", ">=", searchQuery),
-      where("name_lowercase", "<=", searchQuery + "\uf8ff")
-    );
-    const usersSnapshot = await getDocs(usersQuery);
-    const users = usersSnapshot.docs.map(doc => ({ id: doc.id, type: "User", ...doc.data() }));
+    // const usersCol = collection(db, "users");
+    // const usersQuery = query(
+    //   usersCol,
+    //   where("name_lowercase", ">=", searchQuery),
+    //   where("name_lowercase", "<=", searchQuery + "\uf8ff")
+    // );
+    // const usersSnapshot = await getDocs(usersQuery);
+    // const users = usersSnapshot.docs.map(doc => ({ id: doc.id, type: "User", ...doc.data() }));
 
     // Lodges Collection
     const lodgesCol = collection(db, "lodges");

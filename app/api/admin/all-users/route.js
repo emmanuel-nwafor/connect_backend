@@ -5,11 +5,22 @@ export async function GET() {
   try {
     const querySnapshot = await getDocs(collection(db, "users"));
 
-    const usersData = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate?.().toLocaleDateString() || "N/A",
-    }));
+    const usersData = querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+
+      return {
+        id: doc.id,
+        email: data.email || "N/A",
+        initials: data.name
+          ? data.name
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()
+          : "NA",
+        createdAt: data.createdAt?.toDate?.().toLocaleDateString() || "N/A",
+      };
+    });
 
     console.log("Fetched users:", usersData);
 

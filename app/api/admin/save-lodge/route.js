@@ -14,18 +14,14 @@ export async function POST(req) {
       propertyType,
       bedrooms,
       bathrooms,
-      images, // ✅ change from imageUrl → images array
+      imageUrls, // ✅ expect array, not single string
       kitchen,
       balcony,
-      selfContained,
+      selfContained
     } = body;
 
-    // Validate required fields
-    if (!title || !description || !rentFee || !location || !propertyType || !images || !images.length) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Missing required fields' }),
-        { status: 400 }
-      );
+    if (!title || !description || !rentFee || !location || !propertyType || !imageUrls || imageUrls.length === 0) {
+      return new Response(JSON.stringify({ success: false, error: 'Missing required fields' }), { status: 400 });
     }
 
     const docRef = await addDoc(collection(db, 'lodges'), {
@@ -36,7 +32,7 @@ export async function POST(req) {
       propertyType,
       bedrooms: bedrooms || null,
       bathrooms: bathrooms || null,
-      images, // ✅ save as array of strings
+      imageUrls, // ✅ save all images
       kitchen: kitchen || false,
       balcony: balcony || false,
       selfContained: selfContained || false,
@@ -46,9 +42,7 @@ export async function POST(req) {
     return new Response(JSON.stringify({ success: true, id: docRef.id }), { status: 201 });
   } catch (err) {
     console.error('Firestore save failed:', err);
-    return new Response(
-      JSON.stringify({ success: false, error: err.message || 'Unknown error' }),
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ success: false, error: err.message || 'Unknown error' }), { status: 500 });
   }
 }
+s

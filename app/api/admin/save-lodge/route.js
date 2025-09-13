@@ -1,6 +1,6 @@
 // app/api/admin/save-lodge/route.js
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 export async function POST(req) {
   try {
@@ -14,15 +14,18 @@ export async function POST(req) {
       propertyType,
       bedrooms,
       bathrooms,
-      imageUrl,
+      images, // ✅ change from imageUrl → images array
       kitchen,
       balcony,
-      selfContained
+      selfContained,
     } = body;
 
     // Validate required fields
-    if (!title || !description || !rentFee || !location || !propertyType || !imageUrl) {
-      return new Response(JSON.stringify({ success: false, error: 'Missing required fields' }), { status: 400 });
+    if (!title || !description || !rentFee || !location || !propertyType || !images || !images.length) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing required fields' }),
+        { status: 400 }
+      );
     }
 
     const docRef = await addDoc(collection(db, 'lodges'), {
@@ -33,7 +36,7 @@ export async function POST(req) {
       propertyType,
       bedrooms: bedrooms || null,
       bathrooms: bathrooms || null,
-      imageUrl,
+      images, // ✅ save as array of strings
       kitchen: kitchen || false,
       balcony: balcony || false,
       selfContained: selfContained || false,
@@ -43,6 +46,9 @@ export async function POST(req) {
     return new Response(JSON.stringify({ success: true, id: docRef.id }), { status: 201 });
   } catch (err) {
     console.error('Firestore save failed:', err);
-    return new Response(JSON.stringify({ success: false, error: err.message || 'Unknown error' }), { status: 500 });
+    return new Response(
+      JSON.stringify({ success: false, error: err.message || 'Unknown error' }),
+      { status: 500 }
+    );
   }
 }

@@ -1,11 +1,10 @@
-// /app/api/all-lodges/[id]/route.js
 import { NextResponse } from "next/server";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export async function GET(request, { params }) {
   try {
-    const { id } = await params;
+    const { id } = params; // remove "await"
 
     if (!id) {
       return NextResponse.json(
@@ -14,7 +13,7 @@ export async function GET(request, { params }) {
       );
     }
 
-    const docRef = doc(db, "lodges", id); // collection = lodges
+    const docRef = doc(db, "lodges", id);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {

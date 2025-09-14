@@ -14,9 +14,8 @@ export async function POST(req) {
     } else {
       userCredential = await signInWithEmailAndPassword(auth, email, password);
     }
-    const user = userCredential.user;
 
-    // Fetch user role from Firestore
+    const user = userCredential.user;
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     const role = userDoc.exists() ? userDoc.data().role : 'user';
 

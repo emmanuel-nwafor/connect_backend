@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
-import { auth, googleProvider, createUserWithEmailAndPassword, signInWithPopup, db } from '@/lib/firebase'; 
+import { auth, createUserWithEmailAndPassword, db, googleProvider, signInWithPopup } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
@@ -9,7 +9,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    // Validate password requirements on backend
+    // Validate password (if not Google)
     if (!isGoogle) {
       const requirements = {
         minLength: password.length >= 8,
@@ -31,15 +31,17 @@ export async function POST(req) {
     }
     const user = userCredential.user;
 
-    // Assign role based on email
+    // Determine role
     const role = email === 'echinecherem729@gmail.com' ? 'admin' : 'user';
 
-    // Save user data to Firestore
-    await setDoc(doc(db, 'users', user.uid), {
-      email: user.email,
-      role: role,
-      createdAt: new Date().toISOString(),
-    });
+    // 🔹 Save to Firestore ONLY if admin
+    if (role === 'admin') {
+      await setDoc(doc(db, 'users', user.uid), {
+        email: user.email,
+        role,
+        createdAt: new Date().toISOString(),
+      });
+    }
 
     return NextResponse.json({ message: 'User created successfully', uid: user.uid, role }, { status: 201 });
   } catch (error) {

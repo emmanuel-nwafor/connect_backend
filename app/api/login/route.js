@@ -1,10 +1,10 @@
-import { auth, googleProvider, signInWithEmailAndPassword, signInWithPopup, db } from '@/lib/firebase';
+import { auth, db, googleProvider, signInWithEmailAndPassword, signInWithPopup } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 export async function POST(req) {
   try {
     const { email, password, isGoogle = false } = await req.json();
-    if (!email || (isGoogle ? false : !password)) {
+    if (!email || (!isGoogle && !password)) {
       return new Response(JSON.stringify({ error: 'Email and password are required' }), { status: 400 });
     }
 

@@ -1,13 +1,16 @@
-import { auth, createUserWithEmailAndPassword, googleProvider, signInWithPopup } from '@/lib/firebase';
+import { auth, createUserWithEmailAndPassword, db, googleProvider, signInWithPopup } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { NextResponse } from 'next/server';
 
 export async function POST(req) {
     try {
         const { email, password, isGoogle = false } = await req.json();
+
         if (!email || (!isGoogle && !password)) {
-            return new Response(JSON.stringify({ error: 'Email and password are required' }), { status: 400 });
+            return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
         }
 
-        // Validate password
+        // Password validation (only for email/password signup)
         if (!isGoogle) {
             const requirements = {
                 minLength: password.length >= 8,
@@ -17,10 +20,13 @@ export async function POST(req) {
                 specialChar: /[!@#$%^&*]/.test(password),
             };
             if (!Object.values(requirements).every(Boolean)) {
-                return new Response(JSON.stringify({ error: 'Password must meet all requirements' }), { status: 400 });
+                return NextResponse.json({
+                    error: 'Password must meet all requirements: 8+ chars, uppercase, lowercase, number, special char'
+                }, { status: 400 });
             }
         }
 
+        // Create user
         let userCredential;
         if (isGoogle) {
             userCredential = await signInWithPopup(auth, googleProvider);
@@ -28,9 +34,22 @@ export async function POST(req) {
             userCredential = await createUserWithEmailAndPassword(auth, email, password);
         }
 
-        return new Response(JSON.stringify({ message: 'Signup successful', uid: userCredential.user.uid }), { status: 201 });
+        const user = userCredential.user;
+
+        // Determine role
+        const role = email === 'echinecherem729@gmail.com' ? 'admin' : 'user';
+
+        // Create user document in Firestore
+        await setDoc(doc(db, 'users', user.uid), {
+            email: user.email,
+            role: role,
+            isFirstTime: role === 'admin' ? false : true, // First-time flag
+            createdAt: new Date().toISOString(),
+        });
+
+        return NextResponse.json({ message: 'User created successfully', uid: user.uid, role, isFirstTime: role !== 'admin' }, { status: 201 });
     } catch (error) {
         console.error('Signup error:', error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 400 });
+        return NextResponse.json({ error: error.message }, { status: 400 });
     }
 }

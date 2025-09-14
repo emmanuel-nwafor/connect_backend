@@ -1,21 +1,15 @@
-import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 export async function POST(req) {
     try {
-        const { email } = await req.json();
-        if (!email) return new Response(JSON.stringify({ success: false, error: "Missing email" }), { status: 400 });
+        const { uid } = await req.json();
+        const userRef = doc(db, 'users', uid);
 
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("email", "==", email));
-        const snapshot = await getDocs(q);
+        await updateDoc(userRef, { isFirstTime: false });
 
-        return new Response(
-            JSON.stringify({ success: true, exists: !snapshot.empty }),
-            { status: 200 }
-        );
-    } catch (err) {
-        console.error("First-timer check error:", err);
-        return new Response(JSON.stringify({ success: false, error: "Internal server error" }), { status: 500 });
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), { status: 400 });
     }
 }

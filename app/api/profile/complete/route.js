@@ -1,11 +1,8 @@
-import express from "express";
+import { db } from "@/lib/firebase"; // your Firestore init
 import { doc, setDoc } from "firebase/firestore";
-import { db } from "../firebase.js"; // your Firestore init
-
-const router = express.Router();
 
 // Complete Profile
-router.post("/complete", async (req, res) => {
+export async function POST(req) {
     try {
         const { uid, fullName, phone, location, imageUrl } = req.body;
 
@@ -33,6 +30,6 @@ router.post("/complete", async (req, res) => {
         console.error("Profile completion error:", err);
         res.status(500).json({ error: "Internal server error" });
     }
-});
+}
 
 export default router;

@@ -23,6 +23,7 @@ export async function POST(req) {
                 phone,
                 location,
                 imageUrl: imageUrl || null,
+                profileCompleted: true, // ✅ mark profile as completed
                 updatedAt: new Date().toISOString(),
             },
             { merge: true }

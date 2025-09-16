@@ -1,18 +1,21 @@
 import { db } from "@/lib/firebase"; // your Firestore init
 import { doc, setDoc } from "firebase/firestore";
+import { NextResponse } from "next/server";
 
-// Complete Profile
 export async function POST(req) {
     try {
-        const { uid, fullName, phone, location, imageUrl } = req.body;
+        const body = await req.json();
+        const { uid, fullName, phone, location, imageUrl } = body;
 
         if (!uid || !fullName || !phone || !location) {
-            return res.status(400).json({ error: "Missing required fields" });
+            return NextResponse.json(
+                { error: "Missing required fields" },
+                { status: 400 }
+            );
         }
 
         const userRef = doc(db, "users", uid);
 
-        // Save profile in Firestore
         await setDoc(
             userRef,
             {
@@ -25,11 +28,12 @@ export async function POST(req) {
             { merge: true }
         );
 
-        res.json({ message: "Profile completed successfully" });
+        return NextResponse.json({ message: "Profile completed successfully" });
     } catch (err) {
         console.error("Profile completion error:", err);
-        res.status(500).json({ error: "Internal server error" });
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        );
     }
 }
-
-export default router;

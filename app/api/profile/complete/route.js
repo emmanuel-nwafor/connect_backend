@@ -1,33 +1,38 @@
-import { db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
-import { NextResponse } from 'next/server';
+import express from "express";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../firebase.js"; // your Firestore init
 
-export async function POST(req) {
+const router = express.Router();
+
+// Complete Profile
+router.post("/complete", async (req, res) => {
     try {
-        const { uid, fullName, phone, location, address, bio, imageUrl } = await req.json();
+        const { uid, fullName, phone, location, imageUrl } = req.body;
 
         if (!uid || !fullName || !phone || !location) {
-            return NextResponse.json({ error: 'Required fields missing' }, { status: 400 });
+            return res.status(400).json({ error: "Missing required fields" });
         }
 
-        await updateDoc(doc(db, 'users', uid), {
-            fullName,
-            phone,
-            location,
-            address: address || null,
-            bio: bio || null,
-            imageUrl: imageUrl || null,
-            profileCompleted: true,
-            updatedAt: new Date().toISOString(),
-        });
+        const userRef = doc(db, "users", uid);
 
-        return NextResponse.json({
-            message: 'Profile completed. Please log in again.',
-            redirect: '/login'
-        });
+        // Save profile in Firestore
+        await setDoc(
+            userRef,
+            {
+                fullName,
+                phone,
+                location,
+                imageUrl: imageUrl || null,
+                updatedAt: new Date().toISOString(),
+            },
+            { merge: true }
+        );
 
-    } catch (error) {
-        console.error('Profile completion error:', error);
-        return NextResponse.json({ error: error.message }, { status: 400 });
+        res.json({ message: "Profile completed successfully" });
+    } catch (err) {
+        console.error("Profile completion error:", err);
+        res.status(500).json({ error: "Internal server error" });
     }
-}
+});
+
+export default router;

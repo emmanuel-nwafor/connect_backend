@@ -12,19 +12,13 @@ export async function GET(req) {
         const { searchParams } = new URL(req.url);
         const lodgeId = searchParams.get("lodgeId");
         if (!lodgeId)
-            return new Response(
-                JSON.stringify({ success: false, error: "lodgeId is required" }),
-                { status: 400 }
-            );
+            return new Response(JSON.stringify({ success: false, error: "lodgeId is required" }), { status: 400 });
 
         // Fetch current lodge
         const lodgeRef = doc(db, "lodges", lodgeId);
         const lodgeSnap = await getDoc(lodgeRef);
         if (!lodgeSnap.exists())
-            return new Response(
-                JSON.stringify({ success: false, error: "Lodge not found" }),
-                { status: 404 }
-            );
+            return new Response(JSON.stringify({ success: false, error: "Lodge not found" }), { status: 404 });
 
         const currentLodge = lodgeSnap.data();
         const currentRent = parseRent(currentLodge.rentFee);
@@ -35,7 +29,7 @@ export async function GET(req) {
 
         const similarLodges = [];
         lodgesSnap.forEach((docSnap) => {
-            if (docSnap.id === lodgeId) return; // exclude current lodge
+            if (docSnap.id === lodgeId) return;
             const lodge = docSnap.data();
             const lodgeRent = parseRent(lodge.rentFee);
 
@@ -48,15 +42,15 @@ export async function GET(req) {
             if (isSimilar) similarLodges.push({ id: docSnap.id, ...lodge });
         });
 
-        return new Response(
-            JSON.stringify({ success: true, lodges: similarLodges }),
-            { status: 200 }
-        );
+        return new Response(JSON.stringify({ success: true, lodges: similarLodges }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+        });
     } catch (err) {
         console.error("Similar lodges error:", err);
-        return new Response(
-            JSON.stringify({ success: false, error: err.message }),
-            { status: 500 }
-        );
+        return new Response(JSON.stringify({ success: false, error: err.message }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+        });
     }
 }

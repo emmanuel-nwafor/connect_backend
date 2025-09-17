@@ -1,34 +1,20 @@
-import { NextResponse } from "next/server";
-import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import { NextResponse } from "next/server";
 
-export async function GET(request, { params }) {
+export async function GET() {
   try {
-    const { id } = params; // remove "await"
+    const lodgesCol = collection(db, "lodges");
+    const lodgesSnap = await getDocs(lodgesCol);
 
-    if (!id) {
-      return NextResponse.json(
-        { success: false, message: "Missing lodge ID" },
-        { status: 400 }
-      );
-    }
+    const lodges = lodgesSnap.docs.map(doc => ({
+      _id: doc.id,
+      ...doc.data(),
+    }));
 
-    const docRef = doc(db, "lodges", id);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      return NextResponse.json(
-        { success: false, message: "Lodge not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      lodge: { id: docSnap.id, ...docSnap.data() },
-    });
+    return NextResponse.json({ success: true, lodges });
   } catch (error) {
-    console.error("Error fetching lodge:", error);
+    console.error("Error fetching all lodges:", error);
     return NextResponse.json(
       { success: false, message: "Internal Server Error" },
       { status: 500 }

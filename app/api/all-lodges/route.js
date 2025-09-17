@@ -1,6 +1,6 @@
 // app/api/users/lodges/route.js
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
 
 export async function GET() {
   try {

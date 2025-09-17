@@ -1,32 +1,41 @@
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { addDoc, collection } from "firebase/firestore";
 
-// GET /api/users/reviews?lodgeId=LODGE_ID
-export async function GET(req) {
+export async function POST(req) {
     try {
-        const { searchParams } = new URL(req.url);
-        const lodgeId = searchParams.get("lodgeId");
-        if (!lodgeId) {
-            return new Response(JSON.stringify({ success: false, error: "lodgeId required" }), { status: 400 });
+        // Parse JSON safely
+        const body = await req.json();
+        const { lodgeId, rating, comment } = body;
+
+        // Validate required fields
+        if (!lodgeId || !rating || !comment) {
+            return new Response(
+                JSON.stringify({ success: false, error: "Missing required fields" }),
+                { status: 400, headers: { "Content-Type": "application/json" } }
+            );
         }
 
-        const reviewsRef = collection(db, "reviews");
-        const q = query(reviewsRef, where("lodgeId", "==", lodgeId));
-        const snapshot = await getDocs(q);
+        // Save review to Firebase
+        const reviewDoc = {
+            lodgeId,
+            rating,
+            comment,
+            createdAt: new Date().toISOString(),
+        };
 
-        const reviews = [];
-        let totalRating = 0;
+        await addDoc(collection(db, "reviews"), reviewDoc);
 
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            reviews.push({ id: doc.id, ...data });
-            totalRating += data.rating || 0;
-        });
+        return new Response(
+            JSON.stringify({ success: true }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+        );
 
-        const averageRating = reviews.length ? (totalRating / reviews.length).toFixed(1) : 0;
-
-        return new Response(JSON.stringify({ success: true, reviews, averageRating }), { status: 200 });
     } catch (err) {
-        return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+        console.error("Review submission error:", err);
+
+        return new Response(
+            JSON.stringify({ success: false, error: "Internal Server Error" }),
+            { status: 500, headers: { "Content-Type": "application/json" } }
+        );
     }
 }

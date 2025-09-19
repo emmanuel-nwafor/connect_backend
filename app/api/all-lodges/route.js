@@ -1,4 +1,4 @@
-// app/api/users/lodges/route.js
+// app/api/all-lodges/route.js
 import { db } from "@/lib/firebase";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 

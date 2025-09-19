@@ -3,6 +3,8 @@ import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
+    console.log("Request method:", req.method);
+    console.log("Request body:", req.body);
     try {
         const { lodgeId, userId } = await req.json();
         if (!lodgeId || !userId) {

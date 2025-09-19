@@ -3,12 +3,16 @@ import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
-    console.log("Request method:", req.method);
-    console.log("Request body:", req.body);
     try {
-        const { lodgeId, userId } = await req.json();
-        if (!lodgeId || !userId) {
-            return NextResponse.json({ success: false, error: 'Missing lodgeId or userId' }, { status: 400 });
+        console.log("Request method:", req.method);
+        console.log("Request body:", req.body);
+        const body = await req.json(); // <-- parse the ReadableStream into JSON
+        console.log("Request body:", body);
+
+        const { lodgeId } = body;
+
+        if (!lodgeId) {
+            return new Response(JSON.stringify({ error: "lodgeId is required" }), { status: 400 });
         }
 
         const favRef = doc(db, 'users', userId, 'favorites', lodgeId);
@@ -25,7 +29,8 @@ export async function POST(req) {
         }
 
     } catch (err) {
-        console.error('Favorite toggle error:', err);
-        return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+        console.error("Error in /favorites:", err);
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
 }
+

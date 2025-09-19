@@ -1,51 +1,29 @@
-import { db } from "@/lib/firebase";
-import { arrayRemove, arrayUnion, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { db } from '@/lib/firebase';
+import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
+import { NextResponse } from 'next/server';
 
 export async function POST(req) {
     try {
-        const body = await req.json();
-        const { lodgeId, userId } = body;
-
+        const { lodgeId, userId } = await req.json();
         if (!lodgeId || !userId) {
-            return new Response(
-                JSON.stringify({ success: false, error: "Missing required fields" }),
-                { status: 400, headers: { "Content-Type": "application/json" } }
-            );
+            return NextResponse.json({ success: false, error: 'Missing lodgeId or userId' }, { status: 400 });
         }
 
-        const userRef = doc(db, "favorites", userId); // each user has a doc
-        const userSnap = await getDoc(userRef);
+        const favRef = doc(db, 'users', userId, 'favorites', lodgeId);
+        const favDoc = await getDoc(favRef);
 
-        let isFavorite = false;
-
-        if (userSnap.exists()) {
-            const lodges = userSnap.data().lodges || [];
-
-            if (lodges.includes(lodgeId)) {
-                // Remove from favorites
-                await updateDoc(userRef, { lodges: arrayRemove(lodgeId) });
-                isFavorite = false;
-            } else {
-                // Add to favorites
-                await updateDoc(userRef, { lodges: arrayUnion(lodgeId) });
-                isFavorite = true;
-            }
+        if (favDoc.exists()) {
+            // Remove favorite
+            await deleteDoc(favRef);
+            return NextResponse.json({ success: true, isFavorite: false });
         } else {
-            // Create new doc for user
-            await setDoc(userRef, { lodges: [lodgeId] });
-            isFavorite = true;
+            // Add favorite
+            await setDoc(favRef, { lodgeId, createdAt: new Date().toISOString() });
+            return NextResponse.json({ success: true, isFavorite: true });
         }
-
-        return new Response(
-            JSON.stringify({ success: true, isFavorite }),
-            { status: 200, headers: { "Content-Type": "application/json" } }
-        );
 
     } catch (err) {
-        console.error("Favorites error:", err);
-        return new Response(
-            JSON.stringify({ success: false, error: "Internal Server Error" }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
-        );
+        console.error('Favorite toggle error:', err);
+        return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
 }

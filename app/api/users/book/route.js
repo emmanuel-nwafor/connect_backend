@@ -83,7 +83,7 @@ export async function POST(req) {
                     email: userEmail,
                     amount: amountInKobo,
                     metadata: { lodgeId },
-                    callback_url: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/payment-callback`,
+                    // callback_url: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/payment-callback`,
                 }),
             });
         } catch (err) {

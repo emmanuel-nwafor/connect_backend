@@ -40,6 +40,9 @@ export async function POST(req) {
             return new Response(JSON.stringify({ success: false, error: "Missing required fields" }), { status: 400 });
         }
 
+        // Convert amount to kobo
+        const amountInKobo = amount * 100;
+
         // 4️⃣ Initialize Paystack
         const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
         const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -50,7 +53,7 @@ export async function POST(req) {
             },
             body: JSON.stringify({
                 email: userEmail,
-                amount, // amount in kobo
+                amount: amountInKobo,
                 metadata: { lodgeId },
                 callback_url: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/payment-callback`,
             }),

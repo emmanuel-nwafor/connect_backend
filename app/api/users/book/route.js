@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 export async function POST(req) {
     try {
         const body = await req.json();
-        const { amount, lodgeId } = body;
+        const { email, amount, lodgeId } = body;
 
         // Validate required fields
-        if (!amount || !lodgeId) {
+        if (!email || !amount || !lodgeId) {
             return NextResponse.json(
                 { error: "Missing required fields" },
                 { status: 400 }

@@ -8,20 +8,38 @@ export async function GET(req) {
         const userId = searchParams.get("userId");
 
         if (!userId) {
-            return new Response(JSON.stringify({ success: false, error: "Missing userId" }), { status: 400 });
+            return new Response(
+                JSON.stringify({ success: false, error: "Missing userId" }),
+                { status: 400 }
+            );
         }
 
-        const docRef = doc(db, "profiles", userId);
+        const docRef = doc(db, "users", userId); // changed collection to 'users'
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            return new Response(JSON.stringify({ success: true, imageUrl: docSnap.data().imageUrl }), { status: 200 });
+            const data = docSnap.data();
+            return new Response(
+                JSON.stringify({
+                    success: true,
+                    imageUrl: data.imageUrl || null,
+                    name: data.name || null,
+                    email: data.email || null,
+                }),
+                { status: 200 }
+            );
         } else {
-            return new Response(JSON.stringify({ success: true, imageUrl: null }), { status: 200 });
+            return new Response(
+                JSON.stringify({ success: true, imageUrl: null, name: null, email: null }),
+                { status: 200 }
+            );
         }
     } catch (err) {
-        console.error("Failed to fetch profile image:", err);
-        return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+        console.error("Failed to fetch user profile:", err);
+        return new Response(
+            JSON.stringify({ success: false, error: err.message }),
+            { status: 500 }
+        );
     }
 }
 
@@ -31,15 +49,21 @@ export async function POST(req) {
         const { userId, imageUrl } = body;
 
         if (!userId || !imageUrl) {
-            return new Response(JSON.stringify({ success: false, error: "Missing userId or imageUrl" }), { status: 400 });
+            return new Response(
+                JSON.stringify({ success: false, error: "Missing userId or imageUrl" }),
+                { status: 400 }
+            );
         }
 
-        // Save or update profile image
-        await setDoc(doc(db, "profiles", userId), { imageUrl }, { merge: true });
+        // Save or update profile image in 'users' collection
+        await setDoc(doc(db, "users", userId), { imageUrl }, { merge: true });
 
         return new Response(JSON.stringify({ success: true }), { status: 201 });
     } catch (err) {
         console.error("Failed to save profile image:", err);
-        return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+        return new Response(
+            JSON.stringify({ success: false, error: err.message }),
+            { status: 500 }
+        );
     }
 }

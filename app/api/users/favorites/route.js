@@ -1,20 +1,34 @@
 // /api/users/favorites
 import { db } from '@/lib/firebase';
 import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
+import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
     try {
-        console.log("Request method:", req.method);
-        console.log("Request body:", req.body);
-        const body = await req.json();
-        const { lodgeId, userId } = body;
-
-        if (!lodgeId || !userId) {
-            return new Response(JSON.stringify({ error: "lodgeId and userId are required" }), { status: 400 });
+        const authHeader = req.headers.get("authorization");
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const favRef = doc(db, 'users', userId, 'favorites', lodgeId);
+        const token = authHeader.split(" ")[1];
+
+        // ✅ Verify JWT
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            return NextResponse.json({ error: "Invalid or expired token" }, { status: 403 });
+        }
+
+        const { lodgeId } = await req.json();
+        if (!lodgeId) {
+            return NextResponse.json({ error: "lodgeId is required" }, { status: 400 });
+        }
+
+        const userId = decoded.userId; // ✅ from JWT, not client body
+
+        const favRef = doc(db, "users", userId, "favorites", lodgeId);
         const favDoc = await getDoc(favRef);
 
         if (favDoc.exists()) {
@@ -26,6 +40,6 @@ export async function POST(req) {
         }
     } catch (err) {
         console.error("Error in /favorites:", err);
-        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+        return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }

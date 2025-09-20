@@ -1,4 +1,3 @@
-// app/api/profile/upload-profile/route.js
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
@@ -14,7 +13,7 @@ export async function GET(req) {
             );
         }
 
-        const docRef = doc(db, "users", userId); // changed collection to 'users'
+        const docRef = doc(db, "users", userId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
@@ -22,15 +21,15 @@ export async function GET(req) {
             return new Response(
                 JSON.stringify({
                     success: true,
-                    imageUrl: data.imageUrl || null,
-                    name: data.name || null,
+                    fullName: data.fullName || null,
                     email: data.email || null,
+                    imageUrl: data.imageUrl || null,
                 }),
                 { status: 200 }
             );
         } else {
             return new Response(
-                JSON.stringify({ success: true, imageUrl: null, name: null, email: null }),
+                JSON.stringify({ success: true, fullName: null, email: null, imageUrl: null }),
                 { status: 200 }
             );
         }
@@ -55,7 +54,6 @@ export async function POST(req) {
             );
         }
 
-        // Save or update profile image in 'users' collection
         await setDoc(doc(db, "users", userId), { imageUrl }, { merge: true });
 
         return new Response(JSON.stringify({ success: true }), { status: 201 });

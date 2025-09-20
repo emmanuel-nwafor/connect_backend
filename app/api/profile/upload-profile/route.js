@@ -13,13 +13,12 @@ export async function GET(req) {
         let decoded;
         try {
             decoded = jwt.verify(token, process.env.JWT_SECRET);
-        } catch (err) {
+        } catch {
             return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
         }
 
         const userId = decoded.userId;
-        const docRef = doc(db, "users", userId);
-        const docSnap = await getDoc(docRef);
+        const docSnap = await getDoc(doc(db, "users", userId));
 
         if (!docSnap.exists()) {
             return new Response(JSON.stringify({ success: false, error: "User not found" }), { status: 404 });
@@ -36,7 +35,6 @@ export async function GET(req) {
             { status: 200 }
         );
     } catch (err) {
-        console.error("Failed to fetch user profile:", err);
         return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
     }
 }

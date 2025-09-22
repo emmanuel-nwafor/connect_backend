@@ -21,7 +21,7 @@ export async function POST(req) {
             return NextResponse.json({ error: "Invalid or expired token" }, { status: 403 });
         }
 
-        const { lodgeId } = await req.json();
+        const { lodgeId, title, imageUrl, rentFee, location } = await req.json();
         if (!lodgeId) {
             return NextResponse.json({ error: "lodgeId is required" }, { status: 400 });
         }
@@ -35,7 +35,15 @@ export async function POST(req) {
             await deleteDoc(favRef);
             return NextResponse.json({ success: true, isFavorite: false });
         } else {
-            await setDoc(favRef, { lodgeId, createdAt: new Date().toISOString() });
+            // Save lodge details along with favorite
+            await setDoc(favRef, {
+                lodgeId,
+                title: title || "",
+                imageUrl: imageUrl || "",
+                rentFee: rentFee || 0,
+                location: location || "",
+                createdAt: new Date().toISOString()
+            });
             return NextResponse.json({ success: true, isFavorite: true });
         }
     } catch (err) {

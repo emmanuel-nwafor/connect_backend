@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
 export async function POST(req) {
@@ -83,7 +83,20 @@ export async function POST(req) {
         const amountInKobo = Math.round(numericAmount * 100);
         console.log("Amount in kobo:", amountInKobo);
 
-        // 4️⃣ Initialize Paystack transaction
+        // 4️⃣ Save booking to Firestore before initializing Paystack
+        const bookingRef = await addDoc(
+            collection(db, "users", userId, "bookings"),
+            {
+                lodgeId,
+                amount: numericAmount,
+                status: "pending", // until Paystack confirms
+                createdAt: serverTimestamp(),
+            }
+        );
+
+        console.log("✅ Booking saved to Firestore with ID:", bookingRef.id);
+
+        // 5️⃣ Initialize Paystack transaction
         const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY?.trim();
         if (!paystackSecretKey) {
             return new Response(
@@ -95,13 +108,17 @@ export async function POST(req) {
         const initRes = await fetch("https://api.paystack.co/transaction/initialize", {
             method: "POST",
             headers: {
-                Authorization: `Bearer ${paystackSecretKey}`, // Secret key correctly used
+                Authorization: `Bearer ${paystackSecretKey}`,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
                 email: userEmail,
                 amount: amountInKobo,
-                metadata: { lodgeId },
+                metadata: {
+                    lodgeId,
+                    bookingId: bookingRef.id,
+                    userId, // ✅ Added userId for webhook
+                },
                 callback_url: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/payment-callback`,
             }),
         });
@@ -111,18 +128,28 @@ export async function POST(req) {
 
         if (!initData.status) {
             return new Response(
-                JSON.stringify({ success: false, error: initData.message || "Paystack init failed" }),
+                JSON.stringify({
+                    success: false,
+                    error: initData.message || "Paystack init failed",
+                }),
                 { status: 400 }
             );
         }
 
-        // 5️⃣ Return authorization URL
+        // 6️⃣ Return authorization URL + bookingId
         return new Response(
-            JSON.stringify({ success: true, authorizationUrl: initData.data.authorization_url }),
+            JSON.stringify({
+                success: true,
+                authorizationUrl: initData.data.authorization_url,
+                bookingId: bookingRef.id,
+            }),
             { status: 200 }
         );
     } catch (err) {
         console.error("❌ Booking error:", err);
-        return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+        return new Response(
+            JSON.stringify({ success: false, error: err.message }),
+            { status: 500 }
+        );
     }
 }

@@ -1,9 +1,9 @@
-// pages/api/users/fetch-booking.js
+// pages/api/users/fetch-booking/route.js
 import { db } from "@/lib/firebase";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
-export async function POST(req, res) {
+export async function GET(req, res) {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {

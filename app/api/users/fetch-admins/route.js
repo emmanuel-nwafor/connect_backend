@@ -1,4 +1,4 @@
-// /api/users/fetch-admins.js
+// /api/users/fetch-admins/route.js
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import jwt from "jsonwebtoken";

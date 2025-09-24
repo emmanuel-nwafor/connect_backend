@@ -1,12 +1,13 @@
-// /api/chats/send/route.js
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
 export async function POST(req) {
     try {
         const authHeader = req.headers.get("authorization");
-        if (!authHeader?.startsWith("Bearer ")) return new Response(JSON.stringify({ success: false, error: "No token provided" }), { status: 401 });
+        if (!authHeader?.startsWith("Bearer ")) {
+            return new Response(JSON.stringify({ success: false, error: "No token provided" }), { status: 401 });
+        }
 
         const token = authHeader.split(" ")[1];
         let decoded;
@@ -18,34 +19,27 @@ export async function POST(req) {
 
         const userId = decoded.userId;
         const body = await req.json();
-        const { adminId, message } = body;
-        if (!adminId || !message) return new Response(JSON.stringify({ success: false, error: "Missing adminId or message" }), { status: 400 });
+        const { adminId } = body;
+
+        if (!adminId) {
+            return new Response(JSON.stringify({ success: false, error: "Missing adminId" }), { status: 400 });
+        }
 
         const chatId = `chat_${userId}_${adminId}`;
-        const chatDocRef = doc(db, "chats", chatId);
-        const chatSnap = await getDoc(chatDocRef);
+        const chatRef = doc(db, "chats", chatId);
+        const chatSnap = await getDoc(chatRef);
 
         if (!chatSnap.exists()) {
-            await setDoc(chatDocRef, {
+            await setDoc(chatRef, {
                 participants: [userId, adminId],
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
         }
 
-        const messagesCollectionRef = collection(db, "chats", chatId, "messages");
-        const messageDocRef = doc(messagesCollectionRef);
-        await setDoc(messageDocRef, {
-            senderId: userId,
-            message,
-            createdAt: serverTimestamp(),
-            type: "text",
-        });
-
         return new Response(JSON.stringify({ success: true, chatId }), { status: 200 });
-
     } catch (err) {
-        console.error("❌ Chat send error:", err);
+        console.error("❌ get-or-create chat error:", err);
         return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
     }
 }

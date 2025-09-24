@@ -1,4 +1,4 @@
-// /api/chats/fetch.js
+// /api/chats/fetch/route.js
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, orderBy, query, where } from "firebase/firestore";
 import jwt from "jsonwebtoken";

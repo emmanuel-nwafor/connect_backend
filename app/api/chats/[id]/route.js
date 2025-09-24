@@ -1,13 +1,24 @@
 import { db } from "@/lib/firebase";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import jwt from "jsonwebtoken";
 
 export async function GET(req, { params }) {
     try {
-        const { id } = params;
+        const authHeader = req.headers.get("authorization");
+        if (!authHeader?.startsWith("Bearer ")) {
+            return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), { status: 401 });
+        }
 
-        const messagesRef = collection(db, "chats", id, "messages");
-        const q = query(messagesRef, orderBy("createdAt", "asc"));
-        const snapshot = await getDocs(q);
+        const token = authHeader.split(" ")[1];
+        try {
+            jwt.verify(token, process.env.JWT_SECRET);
+        } catch {
+            return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 403 });
+        }
+
+        const snapshot = await getDocs(
+            query(collection(db, "chats", params.chatId, "messages"), orderBy("createdAt", "asc"))
+        );
 
         const messages = snapshot.docs.map(doc => ({
             id: doc.id,
@@ -15,9 +26,7 @@ export async function GET(req, { params }) {
         }));
 
         return new Response(JSON.stringify({ success: true, messages }), { status: 200 });
-
     } catch (err) {
-        console.error("❌ fetch messages error:", err);
         return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
     }
 }

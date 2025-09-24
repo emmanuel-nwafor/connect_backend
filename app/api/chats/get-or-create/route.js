@@ -5,9 +5,8 @@ import jwt from "jsonwebtoken";
 export async function POST(req) {
     try {
         const authHeader = req.headers.get("authorization");
-        if (!authHeader?.startsWith("Bearer ")) {
+        if (!authHeader?.startsWith("Bearer "))
             return new Response(JSON.stringify({ success: false, error: "No token provided" }), { status: 401 });
-        }
 
         const token = authHeader.split(" ")[1];
         let decoded;
@@ -21,38 +20,38 @@ export async function POST(req) {
         const body = await req.json();
         const { adminId } = body;
 
-        if (!adminId) {
+        if (!adminId)
             return new Response(JSON.stringify({ success: false, error: "Missing adminId" }), { status: 400 });
-        }
 
-        // 🔎 1) Check if chat already exists (participants contain both)
+        // check if chat exists
         const chatsRef = collection(db, "chats");
         const q = query(chatsRef, where("participants", "array-contains", userId));
         const snapshot = await getDocs(q);
 
-        let chatId = null;
-
-        snapshot.forEach((docSnap) => {
+        let existingChat = null;
+        snapshot.forEach(docSnap => {
             const data = docSnap.data();
             if (data.participants.includes(adminId)) {
-                chatId = docSnap.id;
+                existingChat = { id: docSnap.id, ...data };
             }
         });
 
-        // 🆕 2) If no chat exists, create one
-        if (!chatId) {
-            const newChatRef = doc(collection(db, "chats"));
-            await setDoc(newChatRef, {
-                participants: [userId, adminId],
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-            });
-            chatId = newChatRef.id;
+        if (existingChat) {
+            return new Response(JSON.stringify({ success: true, chatId: existingChat.id }), { status: 200 });
         }
 
-        return new Response(JSON.stringify({ success: true, chatId }), { status: 200 });
+        // create new chat
+        const chatRef = doc(chatsRef);
+        await setDoc(chatRef, {
+            participants: [userId, adminId],
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+
+        return new Response(JSON.stringify({ success: true, chatId: chatRef.id }), { status: 200 });
+
     } catch (err) {
-        console.error("❌ get-or-create chat error:", err);
+        console.error("❌ get-or-create error:", err);
         return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
     }
 }

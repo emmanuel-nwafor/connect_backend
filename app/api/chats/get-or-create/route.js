@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
 export async function POST(req) {
@@ -25,16 +25,29 @@ export async function POST(req) {
             return new Response(JSON.stringify({ success: false, error: "Missing adminId" }), { status: 400 });
         }
 
-        const chatId = `chat_${userId}_${adminId}`;
-        const chatRef = doc(db, "chats", chatId);
-        const chatSnap = await getDoc(chatRef);
+        // 🔎 1) Check if chat already exists (participants contain both)
+        const chatsRef = collection(db, "chats");
+        const q = query(chatsRef, where("participants", "array-contains", userId));
+        const snapshot = await getDocs(q);
 
-        if (!chatSnap.exists()) {
-            await setDoc(chatRef, {
+        let chatId = null;
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data.participants.includes(adminId)) {
+                chatId = docSnap.id;
+            }
+        });
+
+        // 🆕 2) If no chat exists, create one
+        if (!chatId) {
+            const newChatRef = doc(collection(db, "chats"));
+            await setDoc(newChatRef, {
                 participants: [userId, adminId],
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
+            chatId = newChatRef.id;
         }
 
         return new Response(JSON.stringify({ success: true, chatId }), { status: 200 });

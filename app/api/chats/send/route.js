@@ -1,51 +1,77 @@
-// /api/chats/send/route.js
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+    addDoc,
+    collection,
+    doc,
+    getDoc,
+    serverTimestamp,
+    setDoc,
+} from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
 export async function POST(req) {
     try {
         const authHeader = req.headers.get("authorization");
-        if (!authHeader?.startsWith("Bearer ")) return new Response(JSON.stringify({ success: false, error: "No token provided" }), { status: 401 });
+        if (!authHeader?.startsWith("Bearer ")) {
+            return new Response(
+                JSON.stringify({ success: false, error: "No token provided" }),
+                { status: 401 }
+            );
+        }
 
         const token = authHeader.split(" ")[1];
         let decoded;
         try {
             decoded = jwt.verify(token, process.env.JWT_SECRET);
         } catch {
-            return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
+            return new Response(
+                JSON.stringify({ success: false, error: "Invalid token" }),
+                { status: 401 }
+            );
         }
 
         const userId = decoded.userId;
         const body = await req.json();
-        const { adminId, message } = body;
-        if (!adminId || !message) return new Response(JSON.stringify({ success: false, error: "Missing adminId or message" }), { status: 400 });
+        const { chatId, message } = body;
 
-        const chatId = `chat_${userId}_${adminId}`;
-        const chatDocRef = doc(db, "chats", chatId);
-        const chatSnap = await getDoc(chatDocRef);
-
-        if (!chatSnap.exists()) {
-            await setDoc(chatDocRef, {
-                participants: [userId, adminId],
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-            });
+        if (!chatId || !message) {
+            return new Response(
+                JSON.stringify({ success: false, error: "Missing chatId or message" }),
+                { status: 400 }
+            );
         }
 
-        const messagesCollectionRef = collection(db, "chats", chatId, "messages");
-        const messageDocRef = doc(messagesCollectionRef);
-        await setDoc(messageDocRef, {
+        // 🔎 Ensure chat exists
+        const chatRef = doc(db, "chats", chatId);
+        const chatSnap = await getDoc(chatRef);
+        if (!chatSnap.exists()) {
+            return new Response(
+                JSON.stringify({ success: false, error: "Chat not found" }),
+                { status: 404 }
+            );
+        }
+
+        // 📨 Add message
+        const messagesRef = collection(chatRef, "messages");
+        await addDoc(messagesRef, {
             senderId: userId,
             message,
-            createdAt: serverTimestamp(),
-            type: "text",
+            timestamp: serverTimestamp(),
         });
 
-        return new Response(JSON.stringify({ success: true, chatId }), { status: 200 });
+        // ⏱️ Update last activity on chat
+        await setDoc(
+            chatRef,
+            { updatedAt: serverTimestamp() },
+            { merge: true }
+        );
 
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (err) {
-        console.error("❌ Chat send error:", err);
-        return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+        console.error("❌ send message error:", err);
+        return new Response(
+            JSON.stringify({ success: false, error: err.message }),
+            { status: 500 }
+        );
     }
 }

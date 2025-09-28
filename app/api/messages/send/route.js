@@ -1,52 +1,37 @@
-// app/api/messages/send/route.js
-import { db } from "@/lib/firebase"; // your firebase client sdk config
-import {
-    addDoc,
-    collection,
-    doc,
-    serverTimestamp,
-    updateDoc,
-} from "firebase/firestore";
+import { db } from "@/lib/firebase"; // your firebase config
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
     try {
-        const body = await req.json();
-        const { chatId, senderId, text } = body;
+        const { token, message, receiverId } = await req.json();
 
-        if (!chatId || !senderId || !text) {
-            return NextResponse.json(
-                { success: false, message: "chatId, senderId, and text are required" },
-                { status: 400 }
-            );
+        if (!token || !message || !receiverId) {
+            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        // Reference to the chat document
-        const chatRef = doc(db, "chats", chatId);
+        // Verify JWT token
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+        }
 
-        // Add message under messages subcollection of the chat
-        const messageRef = await addDoc(collection(chatRef, "messages"), {
+        const senderId = decoded.userId; // extracted from token payload
+
+        // Save message to Firestore
+        await addDoc(collection(db, "messages"), {
+            text: message,
             senderId,
-            text,
+            receiverId,
             createdAt: serverTimestamp(),
-            status: "sent", // you can later update this to "delivered" or "read"
         });
 
-        // Update lastMessage and lastUpdated in chat doc
-        await updateDoc(chatRef, {
-            lastMessage: text,
-            lastUpdated: serverTimestamp(),
-        });
-
-        return NextResponse.json({
-            success: true,
-            messageId: messageRef.id,
-        });
+        return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("❌ Error sending message:", error);
-        return NextResponse.json(
-            { success: false, message: error.message },
-            { status: 500 }
-        );
+        console.error("Error sending message:", error);
+        return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 }

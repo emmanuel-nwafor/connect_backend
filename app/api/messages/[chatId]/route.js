@@ -3,6 +3,7 @@ import {
     addDoc,
     collection,
     doc,
+    getDoc,
     getDocs,
     orderBy,
     query,
@@ -17,7 +18,7 @@ function unauthorized(msg = "No token provided") {
     });
 }
 
-// Fetch messages
+// GET messages with isAdmin flag
 export async function GET(req, { params }) {
     try {
         const { chatId } = params || {};
@@ -32,13 +33,35 @@ export async function GET(req, { params }) {
         const q = query(messagesRef, orderBy("createdAt", "asc"));
         const snapshot = await getDocs(q);
 
+        // Fetch all users in the chat
+        const chatRef = doc(db, "chats", chatId);
+        const chatSnap = await getDoc(chatRef);
+        const chatData = chatSnap.data();
+        const participants = chatData?.participants || [];
+
+        // Fetch user roles
+        const usersRoles = {};
+        await Promise.all(
+            participants.map(async (userId) => {
+                const userSnap = await getDoc(doc(db, "users", userId));
+                if (userSnap.exists()) {
+                    const data = userSnap.data();
+                    usersRoles[userId] = data.role === "admin"; // true if admin
+                } else {
+                    usersRoles[userId] = false;
+                }
+            })
+        );
+
         const messages = snapshot.docs.map((d) => {
             const data = d.data();
             return {
                 id: d.id,
-                ...data,
-                isAdmin: data.isAdmin || false, // default to false if not set
+                senderId: data.senderId,
+                text: data.text,
                 createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
+                status: data.status || "delivered",
+                isAdmin: usersRoles[data.senderId] || false, // add isAdmin
             };
         });
 
@@ -54,7 +77,7 @@ export async function GET(req, { params }) {
     }
 }
 
-// Send message
+// POST message
 export async function POST(req, { params }) {
     try {
         const { chatId } = params || {};
@@ -72,7 +95,7 @@ export async function POST(req, { params }) {
         let decoded;
         try {
             decoded = jwt.verify(token, process.env.JWT_SECRET);
-        } catch (e) {
+        } catch {
             return unauthorized("Invalid token");
         }
 
@@ -86,24 +109,13 @@ export async function POST(req, { params }) {
             );
         }
 
-        // Determine if sender is admin
-        const usersRef = collection(db, "users");
-        const snapshot = await getDocs(usersRef);
-        let isAdmin = false;
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            if (data.id === senderId && data.role === "admin") {
-                isAdmin = true;
-            }
-        });
-
         // Add message
         const messagesRef = collection(db, "chats", chatId, "messages");
         const docRef = await addDoc(messagesRef, {
             senderId,
             text,
-            isAdmin,
             createdAt: serverTimestamp(),
+            status: "delivered",
         });
 
         // Update chat metadata
@@ -113,7 +125,10 @@ export async function POST(req, { params }) {
             lastUpdated: serverTimestamp(),
         });
 
-        // Return full message payload
+        // Determine isAdmin for sender
+        const userSnap = await getDoc(doc(db, "users", senderId));
+        const isAdmin = userSnap.exists() && userSnap.data().role === "admin";
+
         return new Response(
             JSON.stringify({
                 success: true,
@@ -122,9 +137,9 @@ export async function POST(req, { params }) {
                     id: docRef.id,
                     senderId,
                     text,
-                    isAdmin,
-                    createdAt: new Date().toISOString(), // fallback timestamp
+                    createdAt: new Date().toISOString(),
                     status: "delivered",
+                    isAdmin,
                 },
             }),
             { status: 200 }

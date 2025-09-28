@@ -7,12 +7,12 @@ export async function POST(req) {
         const body = await req.json();
         const { uid, fullName, phone, location, imageUrl } = body;
 
-        if (!uid || !fullName || !phone || !location) {
-            return NextResponse.json(
-                { error: "Missing required fields" },
-                { status: 400 }
-            );
-        }
+        // if (!uid || !fullName || !phone || !location) {
+        //     return NextResponse.json(
+        //         { error: "Missing required fields" },
+        //         { status: 400 }
+        //     );
+        // }
 
         const userRef = doc(db, "users", uid);
 

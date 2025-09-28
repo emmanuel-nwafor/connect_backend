@@ -61,7 +61,7 @@ export async function GET(req, { params }) {
                 text: data.text,
                 createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
                 status: data.status || "delivered",
-                isAdmin: usersRoles[data.senderId] || false, // add isAdmin
+                isAdmin: usersRoles[data.senderId] || false,
             };
         });
 
@@ -113,9 +113,12 @@ export async function POST(req, { params }) {
         const messagesRef = collection(db, "chats", chatId, "messages");
         const docRef = await addDoc(messagesRef, {
             senderId,
+
             text,
             createdAt: serverTimestamp(),
             status: "delivered",
+            isAdmin: usersRoles[data.senderId] || false,
+
         });
 
         // Update chat metadata
@@ -123,6 +126,8 @@ export async function POST(req, { params }) {
         await updateDoc(chatRef, {
             lastMessage: text,
             lastUpdated: serverTimestamp(),
+            isAdmin: usersRoles[data.senderId] || false,
+
         });
 
         // Determine isAdmin for sender

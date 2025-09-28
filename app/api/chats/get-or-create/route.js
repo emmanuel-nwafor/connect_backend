@@ -1,3 +1,4 @@
+// /api/chats/get-or-create/route.js
 import { db } from "@/lib/firebase";
 import { addDoc, collection, getDocs, query, serverTimestamp, where } from "firebase/firestore";
 import jwt from "jsonwebtoken";
@@ -17,32 +18,33 @@ export async function POST(req) {
             return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
         }
 
-        const { adminId, otherUserId } = await req.json();
-        const loggedInUserId = decoded.userId;
+        const { otherUserId } = await req.json();
+        const userId = decoded.userId;
 
-        const participantA = adminId || loggedInUserId;
-        const participantB = otherUserId;
-
-        if (!participantB) {
+        if (!otherUserId) {
             return new Response(JSON.stringify({ success: false, error: "Missing otherUserId" }), { status: 400 });
         }
 
         // Check if chat already exists
         const chatsRef = collection(db, "chats");
-        const q = query(chatsRef, where("participants", "array-contains", participantA));
+        const q = query(
+            chatsRef,
+            where("participants", "array-contains", userId)
+        );
         const snapshot = await getDocs(q);
 
         let chatId = null;
         snapshot.forEach((doc) => {
             const data = doc.data();
-            if (data.participants.includes(participantB)) {
+            if (data.participants.includes(otherUserId)) {
                 chatId = doc.id;
             }
         });
 
         if (!chatId) {
+            // Create new chat
             const newChat = await addDoc(chatsRef, {
-                participants: [participantA, participantB],
+                participants: [userId, otherUserId],
                 lastMessage: "",
                 lastUpdated: serverTimestamp(),
             });

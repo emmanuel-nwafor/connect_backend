@@ -1,3 +1,4 @@
+// /api/chats/[chatId]/route.js
 import { db } from "@/lib/firebase";
 import {
     addDoc,
@@ -18,7 +19,7 @@ function unauthorized(msg = "No token provided") {
     });
 }
 
-// GET messages with isAdmin flag
+// ✅ GET messages with isAdmin, fullName & imageUrl
 export async function GET(req, { params }) {
     try {
         const { chatId } = params || {};
@@ -33,35 +34,46 @@ export async function GET(req, { params }) {
         const q = query(messagesRef, orderBy("createdAt", "asc"));
         const snapshot = await getDocs(q);
 
-        // Fetch all users in the chat
+        // Fetch participants info
         const chatRef = doc(db, "chats", chatId);
         const chatSnap = await getDoc(chatRef);
         const chatData = chatSnap.data();
         const participants = chatData?.participants || [];
 
-        // Fetch user roles
-        const usersRoles = {};
+        // Cache roles + profiles
+        const usersInfo = {};
         await Promise.all(
             participants.map(async (userId) => {
                 const userSnap = await getDoc(doc(db, "users", userId));
                 if (userSnap.exists()) {
                     const data = userSnap.data();
-                    usersRoles[userId] = data.role === "admin"; // true if admin
+                    usersInfo[userId] = {
+                        isAdmin: data.role === "admin",
+                        fullName: data.fullName || "Unknown",
+                        imageUrl: data.imageUrl || null,
+                    };
                 } else {
-                    usersRoles[userId] = false;
+                    usersInfo[userId] = {
+                        isAdmin: false,
+                        fullName: "Unknown",
+                        imageUrl: null,
+                    };
                 }
             })
         );
 
         const messages = snapshot.docs.map((d) => {
             const data = d.data();
+            const sender = usersInfo[data.senderId] || {};
             return {
                 id: d.id,
                 senderId: data.senderId,
                 text: data.text,
                 createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
                 status: data.status || "delivered",
-                isAdmin: usersRoles[data.senderId] || false, // add isAdmin
+                isAdmin: sender.isAdmin || false,
+                fullName: sender.fullName,
+                imageUrl: sender.imageUrl,
             };
         });
 
@@ -77,7 +89,7 @@ export async function GET(req, { params }) {
     }
 }
 
-// POST message
+// ✅ POST message with fullName & imageUrl stored
 export async function POST(req, { params }) {
     try {
         const { chatId } = params || {};
@@ -109,6 +121,22 @@ export async function POST(req, { params }) {
             );
         }
 
+        // Fetch sender info
+        const userSnap = await getDoc(doc(db, "users", senderId));
+        let senderData = {
+            isAdmin: false,
+            fullName: "Unknown",
+            imageUrl: null,
+        };
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            senderData = {
+                isAdmin: data.role === "admin",
+                fullName: data.fullName || "Unknown",
+                imageUrl: data.imageUrl || null,
+            };
+        }
+
         // Add message
         const messagesRef = collection(db, "chats", chatId, "messages");
         const docRef = await addDoc(messagesRef, {
@@ -116,6 +144,8 @@ export async function POST(req, { params }) {
             text,
             createdAt: serverTimestamp(),
             status: "delivered",
+            fullName: senderData.fullName,
+            imageUrl: senderData.imageUrl,
         });
 
         // Update chat metadata
@@ -124,10 +154,6 @@ export async function POST(req, { params }) {
             lastMessage: text,
             lastUpdated: serverTimestamp(),
         });
-
-        // Determine isAdmin for sender
-        const userSnap = await getDoc(doc(db, "users", senderId));
-        const isAdmin = userSnap.exists() && userSnap.data().role === "admin";
 
         return new Response(
             JSON.stringify({
@@ -139,7 +165,9 @@ export async function POST(req, { params }) {
                     text,
                     createdAt: new Date().toISOString(),
                     status: "delivered",
-                    isAdmin,
+                    isAdmin: senderData.isAdmin,
+                    fullName: senderData.fullName,
+                    imageUrl: senderData.imageUrl,
                 },
             }),
             { status: 200 }

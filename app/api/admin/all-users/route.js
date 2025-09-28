@@ -1,4 +1,4 @@
-import { db } from "@/lib/firebase"; 
+import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 
 export async function GET() {
@@ -13,10 +13,10 @@ export async function GET() {
         email: data.email || "N/A",
         initials: data.name
           ? data.name
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .toUpperCase()
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
           : "NA",
         createdAt: data.createdAt?.toDate?.().toLocaleDateString() || "N/A",
       };

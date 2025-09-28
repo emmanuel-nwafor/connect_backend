@@ -17,32 +17,32 @@ export async function POST(req) {
             return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
         }
 
-        const { otherUserId } = await req.json(); // userId or adminId of the other participant
-        const currentUserId = decoded.userId;
+        const { adminId, otherUserId } = await req.json();
+        const loggedInUserId = decoded.userId;
 
-        if (!otherUserId) {
+        const participantA = adminId || loggedInUserId;
+        const participantB = otherUserId;
+
+        if (!participantB) {
             return new Response(JSON.stringify({ success: false, error: "Missing otherUserId" }), { status: 400 });
         }
 
+        // Check if chat already exists
         const chatsRef = collection(db, "chats");
-
-        // Query all chats that include the current user
-        const q = query(chatsRef, where("participants", "array-contains", currentUserId));
+        const q = query(chatsRef, where("participants", "array-contains", participantA));
         const snapshot = await getDocs(q);
 
-        // Look for a chat that also contains the other user
         let chatId = null;
         snapshot.forEach((doc) => {
             const data = doc.data();
-            if (data.participants.includes(otherUserId)) {
+            if (data.participants.includes(participantB)) {
                 chatId = doc.id;
             }
         });
 
-        // If no chat exists, create one
         if (!chatId) {
             const newChat = await addDoc(chatsRef, {
-                participants: [currentUserId, otherUserId],
+                participants: [participantA, participantB],
                 lastMessage: "",
                 lastUpdated: serverTimestamp(),
             });

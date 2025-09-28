@@ -17,6 +17,7 @@ function unauthorized(msg = "No token provided") {
     });
 }
 
+// Fetch messages
 export async function GET(req, { params }) {
     try {
         const { chatId } = params || {};
@@ -31,11 +32,15 @@ export async function GET(req, { params }) {
         const q = query(messagesRef, orderBy("createdAt", "asc"));
         const snapshot = await getDocs(q);
 
-        const messages = snapshot.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-            createdAt: d.data().createdAt?.toDate?.()?.toISOString?.() || null,
-        }));
+        const messages = snapshot.docs.map((d) => {
+            const data = d.data();
+            return {
+                id: d.id,
+                ...data,
+                isAdmin: data.isAdmin || false, // default to false if not set
+                createdAt: data.createdAt?.toDate?.()?.toISOString?.() || null,
+            };
+        });
 
         return new Response(JSON.stringify({ success: true, messages }), {
             status: 200,
@@ -49,6 +54,7 @@ export async function GET(req, { params }) {
     }
 }
 
+// Send message
 export async function POST(req, { params }) {
     try {
         const { chatId } = params || {};
@@ -80,11 +86,23 @@ export async function POST(req, { params }) {
             );
         }
 
+        // Determine if sender is admin
+        const usersRef = collection(db, "users");
+        const snapshot = await getDocs(usersRef);
+        let isAdmin = false;
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.id === senderId && data.role === "admin") {
+                isAdmin = true;
+            }
+        });
+
         // Add message
         const messagesRef = collection(db, "chats", chatId, "messages");
         const docRef = await addDoc(messagesRef, {
             senderId,
             text,
+            isAdmin,
             createdAt: serverTimestamp(),
         });
 
@@ -104,7 +122,8 @@ export async function POST(req, { params }) {
                     id: docRef.id,
                     senderId,
                     text,
-                    createdAt: new Date().toISOString(), // fallback timestamp for UI
+                    isAdmin,
+                    createdAt: new Date().toISOString(), // fallback timestamp
                     status: "delivered",
                 },
             }),

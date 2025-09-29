@@ -35,6 +35,7 @@ export async function POST(req) {
             message: `${senderData.email} sent you a new message.`,
             role: receiverData.role, // admin/user
             createdAt: serverTimestamp(),
+            type: "message",
         });
 
         return NextResponse.json({ success: true });

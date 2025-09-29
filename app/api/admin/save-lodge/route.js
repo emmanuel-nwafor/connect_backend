@@ -30,6 +30,15 @@ export async function POST(req) {
       title: "New property Available",
       message: `${title} has been added to the platform.`,
       role: "user",
+      type: "alert",
+      createdAt: serverTimestamp(),
+    });
+
+    await addDoc(collection(db, "notifications"), {
+      title: "Property Uploaded Successfully",
+      message: `${title} has been uploaded to listings.`,
+      role: "admin",
+      type: "alert",
       createdAt: serverTimestamp(),
     });
 

@@ -4,9 +4,9 @@ import jwt from "jsonwebtoken";
 
 export async function POST(req) {
     try {
-        console.log("📌 Booking request received");
+        console.log("Booking request received");
 
-        // 1️⃣ Validate JWT
+        // Validate JWT
         const authHeader = req.headers.get("authorization");
         console.log("Authorization header:", authHeader);
 
@@ -21,7 +21,7 @@ export async function POST(req) {
         let decoded;
         try {
             decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log("✅ JWT decoded:", decoded);
+            console.log("JWT decoded:", decoded);
         } catch (err) {
             return new Response(
                 JSON.stringify({ success: false, error: "Invalid token" }),
@@ -31,7 +31,7 @@ export async function POST(req) {
 
         const userId = decoded.userId;
 
-        // 2️⃣ Fetch user from Firestore
+        // Fetch user from Firestore
         const userRef = doc(db, "users", userId);
         const userSnap = await getDoc(userRef);
 
@@ -44,6 +44,10 @@ export async function POST(req) {
 
         const userData = userSnap.data();
         const userEmail = userData.email;
+        const userName = userData.fullName || "User";
+
+        console.log("User email:", userEmail);
+        console.log("User name:", userName);
 
         if (!userEmail) {
             return new Response(
@@ -52,7 +56,7 @@ export async function POST(req) {
             );
         }
 
-        // 3️⃣ Parse request body
+        // Parse request body
         let body;
         try {
             body = await req.json();
@@ -83,7 +87,7 @@ export async function POST(req) {
         const amountInKobo = Math.round(numericAmount * 100);
         console.log("Amount in kobo:", amountInKobo);
 
-        // 4️⃣ Save booking to Firestore before initializing Paystack
+        // Save booking to Firestore before initializing Paystack
         const bookingRef = await addDoc(
             collection(db, "users", userId, "bookings"),
             {
@@ -94,17 +98,26 @@ export async function POST(req) {
             }
         );
 
-        console.log("✅ Booking saved to Firestore with ID:", bookingRef.id);
+        console.log("Booking saved to Firestore with ID:", bookingRef.id);
 
-        // ✅ Add notification for admins
+        // Add notification for admins
         await addDoc(collection(db, "notifications"), {
             title: "New Booking",
-            message: `${userEmail} booked lodge ${lodgeId}.`,
+            message: `${userName} booked a lodge ${lodgeId}.`,
             role: "admin",
+            type: "booking",
             createdAt: serverTimestamp(),
         });
 
-        // 5️⃣ Initialize Paystack transaction
+        await addDoc(collection(db, "notifications"), {
+            title: "New Booking",
+            message: `You booked a lodge ${lodgeId}.`,
+            role: "user",
+            type: "booking",
+            createdAt: serverTimestamp(),
+        });
+
+        // Initialize Paystack transaction
         const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY?.trim();
         if (!paystackSecretKey) {
             return new Response(
@@ -125,7 +138,7 @@ export async function POST(req) {
                 metadata: {
                     lodgeId,
                     bookingId: bookingRef.id,
-                    userId, // ✅ Added userId for webhook
+                    userId, // Added userId for webhook
                 },
                 callback_url: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/payment-callback`,
             }),
@@ -144,7 +157,7 @@ export async function POST(req) {
             );
         }
 
-        // 6️⃣ Return authorization URL + bookingId
+        // Return authorization URL + bookingId
         return new Response(
             JSON.stringify({
                 success: true,

@@ -35,6 +35,12 @@ export async function GET(req, { params }) {
                     fullName: userData.fullName || null,
                     imageUrl: userData.imageUrl || null,
                     role: userData.role || "user",
+                    location: userData.location || null,
+                    email: userData.email || null,
+                    phone: userData.phone || null,
+                    profileCompleted: userData.profileCompleted || false,
+                    createdAt: userData.createdAt?.toDate?.()?.toISOString?.() || null,
+                    updatedAt: userData.updatedAt?.toDate?.()?.toISOString?.() || null,
                 },
             },
             { status: 200 }
@@ -47,3 +53,5 @@ export async function GET(req, { params }) {
         );
     }
 }
+
+

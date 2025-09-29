@@ -18,21 +18,24 @@ export async function GET(req) {
             return NextResponse.json({ success: false, error: "Invalid token" }, { status: 401 });
         }
 
-        const role = "user"; // Users only see notifications for role "user" or "all"
+        const role = "user";
 
         const notificationsRef = collection(db, "notifications");
         const q = query(
             notificationsRef,
-            where("role", "in", [role, "user", "all"]),
+            where("role", "==", role),
             orderBy("createdAt", "desc")
         );
 
         const snapshot = await getDocs(q);
-        const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const notifications = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
 
         return NextResponse.json({ success: true, notifications });
     } catch (err) {
-        console.error("Error fetching user notifications:", err);
+        console.error("❌ Error fetching user notifications:", err);
         return NextResponse.json({ success: false, message: "Failed to fetch notifications." }, { status: 500 });
     }
 }

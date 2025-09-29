@@ -1,5 +1,5 @@
 import { auth, createUserWithEmailAndPassword, db, googleProvider, signInWithPopup } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
 
@@ -30,7 +30,26 @@ export async function POST(req) {
       createdAt: new Date().toISOString(),
     });
 
-    // ✅ Sign JWT with userId
+    // Push notifications
+    if (role === 'user') {
+      // Notify admins
+      await addDoc(collection(db, "notifications"), {
+        title: "New User Signup",
+        message: `${email} just signed up.`,
+        role: "admin",
+        createdAt: serverTimestamp(),
+      });
+
+      // Welcome notification to the user
+      await addDoc(collection(db, "notifications"), {
+        title: "Welcome!",
+        message: `Welcome to the app, ${email}!`,
+        role: "user",
+        createdAt: serverTimestamp(),
+      });
+    }
+
+    // Sign JWT
     const token = jwt.sign(
       { userId: user.uid, email: user.email },
       process.env.JWT_SECRET,
@@ -41,7 +60,7 @@ export async function POST(req) {
       message: 'Signup successful. Redirect to profile setup.',
       uid: user.uid,
       email: user.email,
-      token, // ✅ return JWT
+      token,
       redirect: '/setup'
     }, { status: 201 });
 

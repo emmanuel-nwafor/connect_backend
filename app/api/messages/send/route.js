@@ -1,27 +1,27 @@
-import { db } from "@/lib/firebase"; // your firebase config
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
     try {
         const { token, message, receiverId } = await req.json();
+        if (!token || !message || !receiverId) return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
 
-        if (!token || !message || !receiverId) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-        }
-
-        // Verify JWT token
         let decoded;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_SECRET);
-        } catch (err) {
-            return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-        }
+        try { decoded = jwt.verify(token, process.env.JWT_SECRET); }
+        catch { return NextResponse.json({ error: "Invalid token" }, { status: 401 }); }
 
-        const senderId = decoded.userId; // extracted from token payload
+        const senderId = decoded.userId;
 
-        // Save message to Firestore
+        // Get sender and receiver info
+        const senderSnap = await getDoc(doc(db, "users", senderId));
+        const receiverSnap = await getDoc(doc(db, "users", receiverId));
+        if (!senderSnap.exists() || !receiverSnap.exists()) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+        const senderData = senderSnap.data();
+        const receiverData = receiverSnap.data();
+
         await addDoc(collection(db, "messages"), {
             text: message,
             senderId,
@@ -29,9 +29,17 @@ export async function POST(req) {
             createdAt: serverTimestamp(),
         });
 
+        // ✅ Notification
+        await addDoc(collection(db, "notifications"), {
+            title: "New Message",
+            message: `${senderData.email} sent you a new message.`,
+            role: receiverData.role, // admin/user
+            createdAt: serverTimestamp(),
+        });
+
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("Error sending message:", error);
-        return NextResponse.json({ error: "Server error" }, { status: 500 });
+        console.error("Message send error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

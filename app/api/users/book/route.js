@@ -1,4 +1,3 @@
-// /api/users/book
 import { db } from "@/lib/firebase";
 import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import jwt from "jsonwebtoken";
@@ -96,6 +95,14 @@ export async function POST(req) {
         );
 
         console.log("✅ Booking saved to Firestore with ID:", bookingRef.id);
+
+        // ✅ Add notification for admins
+        await addDoc(collection(db, "notifications"), {
+            title: "New Booking",
+            message: `${userEmail} booked lodge ${lodgeId}.`,
+            role: "admin",
+            createdAt: serverTimestamp(),
+        });
 
         // 5️⃣ Initialize Paystack transaction
         const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY?.trim();

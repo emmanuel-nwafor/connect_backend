@@ -1,24 +1,10 @@
-// app/api/admin/save-lodge/route.js
 import { db } from '@/lib/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 export async function POST(req) {
   try {
     const body = await req.json();
-
-    const {
-      title,
-      description,
-      rentFee,
-      location,
-      propertyType,
-      bedrooms,
-      bathrooms,
-      imageUrls, // ✅ expect array, not single string
-      kitchen,
-      balcony,
-      selfContained
-    } = body;
+    const { title, description, rentFee, location, propertyType, bedrooms, bathrooms, imageUrls, kitchen, balcony, selfContained } = body;
 
     if (!title || !description || !rentFee || !location || !propertyType || !imageUrls || imageUrls.length === 0) {
       return new Response(JSON.stringify({ success: false, error: 'Missing required fields' }), { status: 400 });
@@ -32,16 +18,24 @@ export async function POST(req) {
       propertyType,
       bedrooms: bedrooms || null,
       bathrooms: bathrooms || null,
-      imageUrls, // ✅ save all images
+      imageUrls,
       kitchen: kitchen || false,
       balcony: balcony || false,
       selfContained: selfContained || false,
       createdAt: serverTimestamp(),
     });
 
+    // ✅ Notification to users about new lodge
+    await addDoc(collection(db, "notifications"), {
+      title: "New Lodge Available",
+      message: `${title} has been added to the platform.`,
+      role: "user",
+      createdAt: serverTimestamp(),
+    });
+
     return new Response(JSON.stringify({ success: true, id: docRef.id }), { status: 201 });
   } catch (err) {
-    console.error('Firestore save failed:', err);
-    return new Response(JSON.stringify({ success: false, error: err.message || 'Unknown error' }), { status: 500 });
+    console.error('Save lodge error:', err);
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }
 }

@@ -27,7 +27,7 @@ export async function POST(req) {
 
     // ✅ Notification to users about new lodge
     await addDoc(collection(db, "notifications"), {
-      title: "New Lodge Available",
+      title: "New property Available",
       message: `${title} has been added to the platform.`,
       role: "user",
       createdAt: serverTimestamp(),

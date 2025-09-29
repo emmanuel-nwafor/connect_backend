@@ -23,7 +23,7 @@ export async function GET(req) {
         const notificationsRef = collection(db, "notifications");
         const q = query(
             notificationsRef,
-            where("role", "in", [role, "all"]),
+            where("role", "in", [role, "user", "all"]),
             orderBy("createdAt", "desc")
         );
 

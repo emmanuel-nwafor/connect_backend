@@ -1,15 +1,30 @@
 import { db } from "@/lib/firebase";
-import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req) {
     try {
+        const authHeader = req.headers.get("authorization");
+        if (!authHeader?.startsWith("Bearer ")) {
+            return NextResponse.json({ success: false, error: "No token provided" }, { status: 401 });
+        }
+
+        const token = authHeader.split(" ")[1];
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+        } catch {
+            return NextResponse.json({ success: false, error: "Invalid token" }, { status: 401 });
+        }
+
+        const role = "user"; // Users only see notifications for role "user" or "all"
+
         const notificationsRef = collection(db, "notifications");
         const q = query(
             notificationsRef,
-            where("role", "in", ["user", "all"]),
-            orderBy("createdAt", "desc"),
-            limit(50)
+            where("role", "in", [role, "all"]),
+            orderBy("createdAt", "desc")
         );
 
         const snapshot = await getDocs(q);

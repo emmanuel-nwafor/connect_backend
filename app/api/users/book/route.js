@@ -174,3 +174,35 @@ export async function POST(req) {
         );
     }
 }
+
+export async function GET(req) {
+    try {
+        console.log("Booking request fetched");
+        // Validate JWT
+        const authHeader = req.headers.get("authorization");
+        console.log("Authorization header:", authHeader);
+
+        if (!authHeader?.startsWith("Bearer ")) {
+            return new Response(
+                JSON.stringify({ success: false, error: "No token provided" }),
+                { status: 401 }
+            );
+        }
+
+        const token = authHeader.split(" ")[1];
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log("JWT decoded:", decoded);
+        } catch (err) {
+            return new Response(
+                JSON.stringify({ success: false, error: "Invalid token" }),
+                { status: 401 }
+            );
+        }
+
+
+    } catch (error) {
+
+    }
+}

@@ -106,6 +106,7 @@ export async function POST(req) {
             message: `${userName} booked a lodge ${lodgeId}.`,
             role: "admin",
             type: "booking",
+            bookingId: bookingRef.id,
             createdAt: serverTimestamp(),
         });
 
@@ -114,6 +115,7 @@ export async function POST(req) {
             message: `You booked a lodge ${lodgeId}.`,
             role: "user",
             type: "booking",
+            bookingId: bookingRef.id,
             createdAt: serverTimestamp(),
         });
 

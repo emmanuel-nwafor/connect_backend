@@ -37,16 +37,16 @@ export async function POST(req) {
         title: "New User Signup",
         message: `${email} just signed up.`,
         role: "admin",
-        type: "alert",
+
         createdAt: serverTimestamp(),
       });
 
       // Welcome notification to the user
       await addDoc(collection(db, "notifications"), {
-        title: "Welcome to CONNECT",
-        message: `Welcome to CONNECT 🎉 Your one-stop destination to access properties without hassle. Explore, book, and manage listings with ease!`,
+        title: "Welcome!",
+        message: `Welcome to the app, ${email}!`,
         role: "user",
-        type: "welcome",
+
         createdAt: serverTimestamp(),
       });
 

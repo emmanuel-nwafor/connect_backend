@@ -20,37 +20,29 @@ export async function POST(req) {
     }
 
     const user = userCredential.user;
-    const role = email === 'admin' || 'user';
 
-    // Firestore user doc
+    // Firestore user doc (default role = "user")
     await setDoc(doc(db, 'users', user.uid), {
       email: user.email,
-      role,
+      role: "user",
       profileCompleted: false,
       createdAt: new Date().toISOString(),
     });
 
     // Push notifications
-    if (role === 'user') {
-      // Notify admins
-      await addDoc(collection(db, "notifications"), {
-        title: "New User Signup",
-        message: `${email} just signed up.`,
-        role: "admin",
+    await addDoc(collection(db, "notifications"), {
+      title: "New User Signup",
+      message: `${email} just signed up.`,
+      role: "admin",
+      createdAt: serverTimestamp(),
+    });
 
-        createdAt: serverTimestamp(),
-      });
-
-      // Welcome notification to the user
-      await addDoc(collection(db, "notifications"), {
-        title: "Welcome!",
-        message: `Welcome to the app, ${email}!`,
-        role: "user",
-
-        createdAt: serverTimestamp(),
-      });
-
-    }
+    await addDoc(collection(db, "notifications"), {
+      title: "Welcome!",
+      message: `Welcome to the app, ${email}!`,
+      role: "user",
+      createdAt: serverTimestamp(),
+    });
 
     // Sign JWT
     const token = jwt.sign(
@@ -64,7 +56,7 @@ export async function POST(req) {
       uid: user.uid,
       email: user.email,
       token,
-      redirect: '/setup'
+      redirect: '/login' // ✅ redirect to login after signup
     }, { status: 201 });
 
   } catch (error) {

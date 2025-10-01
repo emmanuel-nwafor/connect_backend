@@ -1,16 +1,18 @@
 import { auth, db, googleProvider, signInWithEmailAndPassword, signInWithPopup } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
     const { email, password, isGoogle = false } = await req.json();
+    console.log("Signup payload:", { email, password, isGoogle });
 
     if (!email || (!isGoogle && !password)) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    // Login with Firebase Auth
+    // Firebase login
     let userCredential;
     if (isGoogle) {
       userCredential = await signInWithPopup(auth, googleProvider);
@@ -19,9 +21,10 @@ export async function POST(req) {
     }
 
     const user = userCredential.user;
+
+    // Check Firestore doc
     const docRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(docRef);
-
     if (!userDoc.exists()) {
       return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
     }
@@ -29,14 +32,36 @@ export async function POST(req) {
     const data = userDoc.data();
 
     if (!data.profileCompleted) {
-      return NextResponse.json({ error: 'Please complete your profile first', redirect: '/setup' }, { status: 403 });
+      // still return token but with redirect
+      const token = jwt.sign(
+        { userId: user.uid, email: user.email, role: data.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return NextResponse.json({
+        error: 'Please complete your profile first',
+        redirect: '/setup',
+        uid: user.uid,
+        email: user.email,
+        token,
+      }, { status: 403 });
     }
+
+    // ✅ Sign JWT
+    const token = jwt.sign(
+      { userId: user.uid, email: user.email, role: data.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     return NextResponse.json({
       message: 'Login successful',
       uid: user.uid,
+      email: user.email,
       role: data.role,
-      redirect: '/users'
+      token, // send JWT
+      redirect: '/users',
     });
 
   } catch (error) {

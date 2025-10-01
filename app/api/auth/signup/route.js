@@ -1,4 +1,4 @@
-import { auth, createUserWithEmailAndPassword, db, googleProvider, signInWithPopup } from '@/lib/firebase';
+import { auth, createUserWithEmailAndPassword, db } from '@/lib/firebase';
 import { addDoc, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
@@ -13,11 +13,11 @@ export async function POST(req) {
 
     // Create user with Firebase Auth
     let userCredential;
-    if (isGoogle) {
-      userCredential = await signInWithPopup(auth, googleProvider);
-    } else {
-      userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    }
+    // if (isGoogle) {
+    // userCredential = await signInWithPopup(auth, googleProvider);
+    // } else {
+    userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    // }
 
     const user = userCredential.user;
 

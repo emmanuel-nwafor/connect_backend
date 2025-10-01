@@ -20,7 +20,7 @@ export async function POST(req) {
     }
 
     const user = userCredential.user;
-    const role = email === 'echinecherem729@gmail.com' ? 'admin' : 'user';
+    const role = email === 'admin' || 'user';
 
     // Firestore user doc
     await setDoc(doc(db, 'users', user.uid), {

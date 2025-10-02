@@ -1,6 +1,5 @@
 import { auth, createUserWithEmailAndPassword, db, googleProvider, signInWithPopup } from '@/lib/firebase';
-import { addDoc, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import jwt from 'jsonwebtoken';
+import { doc, setDoc } from 'firebase/firestore';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
@@ -22,7 +21,7 @@ export async function POST(req) {
     const user = userCredential.user;
     const role = email === 'echinecherem729@gmail.com' ? 'admin' : 'user';
 
-    // Firestore user doc
+    // Create minimal Firestore doc
     await setDoc(doc(db, 'users', user.uid), {
       email: user.email,
       role,
@@ -30,40 +29,10 @@ export async function POST(req) {
       createdAt: new Date().toISOString(),
     });
 
-    // Push notifications
-    if (role === 'user') {
-      // Notify admins
-      await addDoc(collection(db, "notifications"), {
-        title: "New User Signup",
-        message: `${email} just signed up.`,
-        role: "admin",
-
-        createdAt: serverTimestamp(),
-      });
-
-      // Welcome notification to the user
-      await addDoc(collection(db, "notifications"), {
-        title: "Welcome!",
-        message: `Welcome to the app, ${email}!`,
-        role: "user",
-
-        createdAt: serverTimestamp(),
-      });
-
-    }
-
-    // Sign JWT
-    const token = jwt.sign(
-      { userId: user.uid, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
     return NextResponse.json({
       message: 'Signup successful. Redirect to profile setup.',
       uid: user.uid,
       email: user.email,
-      token,
       redirect: '/setup'
     }, { status: 201 });
 

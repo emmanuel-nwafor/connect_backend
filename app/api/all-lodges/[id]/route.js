@@ -4,11 +4,11 @@ import { NextResponse } from "next/server";
 
 export async function GET(request, { params }) {
   try {
-    const { id } = params; // remove "await"
+    const { id } = params;
 
     if (!id) {
       return NextResponse.json(
-        { success: false, message: "Missing lodge ID" },
+        { success: false, error: "Missing property ID" },
         { status: 400 }
       );
     }
@@ -18,19 +18,19 @@ export async function GET(request, { params }) {
 
     if (!docSnap.exists()) {
       return NextResponse.json(
-        { success: false, message: "Lodge not found" },
+        { success: false, error: "Property not found" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      lodge: { id: docSnap.id, ...docSnap.data() },
+      property: { id: docSnap.id, ...docSnap.data() },
     });
   } catch (error) {
-    console.error("Error fetching lodge:", error);
+    console.error("Error fetching property:", error);
     return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
+      { success: false, error: "Internal Server Error" },
       { status: 500 }
     );
   }

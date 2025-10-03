@@ -4,18 +4,46 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { title, description, rentFee, location, propertyType, bedrooms, bathrooms, imageUrls, kitchen, balcony, selfContained } = body;
+    const {
+      title,
+      description,
+      rentFee,
+      location,
+      propertyType,
+      bedrooms,
+      bathrooms,
+      imageUrls,
+      kitchen,
+      balcony,
+      selfContained,
+      category
+    } = body;
 
-    if (!title || !description || !rentFee || !location || !propertyType || !imageUrls || imageUrls.length === 0) {
-      return new Response(JSON.stringify({ success: false, error: 'Missing required fields' }), { status: 400 });
+    // Validation
+    if (
+      !title ||
+      !description ||
+      !rentFee ||
+      !location ||
+      !propertyType ||
+      !category ||
+      !imageUrls ||
+      imageUrls.length === 0
+    ) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing required fields' }),
+        { status: 400 }
+      );
     }
 
+    // Add property to "lodges" collection
     const docRef = await addDoc(collection(db, 'lodges'), {
       title,
       description,
       rentFee,
       location,
       propertyType,
+      category: category.toLowerCase(),
       bedrooms: bedrooms || null,
       bathrooms: bathrooms || null,
       imageUrls,
@@ -25,9 +53,9 @@ export async function POST(req) {
       createdAt: serverTimestamp(),
     });
 
-    // ✅ Notification to users about new lodge
+    // Notification to users about new lodge
     await addDoc(collection(db, "notifications"), {
-      title: "New property Available",
+      title: "New Property Available",
       message: `${title} has been added to the platform.`,
       role: "user",
       type: "alert",
@@ -42,9 +70,15 @@ export async function POST(req) {
       createdAt: serverTimestamp(),
     });
 
-    return new Response(JSON.stringify({ success: true, id: docRef.id }), { status: 201 });
+    return new Response(
+      JSON.stringify({ success: true, id: docRef.id }),
+      { status: 201 }
+    );
   } catch (err) {
     console.error('Save lodge error:', err);
-    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+    return new Response(
+      JSON.stringify({ success: false, error: err.message }),
+      { status: 500 }
+    );
   }
 }

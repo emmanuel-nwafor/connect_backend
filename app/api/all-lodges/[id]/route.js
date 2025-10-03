@@ -1,33 +1,40 @@
-// app/api/all-lodges/route.js
 import { db } from "@/lib/firebase";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
+import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request, { params }) {
   try {
-    // Reference the "lodges" collection
-    const lodgesRef = collection(db, "lodges");
+    const { id } = params;
 
-    // Optional: order by createdAt descending
-    const q = query(lodgesRef, orderBy("createdAt", "desc"));
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: "Missing property ID" },
+        { status: 400 },
+        console.log(error)
+      );
+    }
 
-    const snapshot = await getDocs(q);
+    const docRef = doc(db, "lodges", id);
+    const docSnap = await getDoc(docRef);
 
-    const lodges = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    if (!docSnap.exists()) {
+      return NextResponse.json(
+        { success: false, error: "Property not found" },
+        { status: 404 },
+        console.log(error)
+      );
+    }
 
-    return new Response(JSON.stringify({ success: true, lodges }), {
-      status: 200,
+    return NextResponse.json({
+      success: true,
+      lodge: { id: docSnap.id, ...docSnap.data() },
     });
-  } catch (err) {
-    console.error("Failed to fetch lodges:", err);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: err.message || "Failed to fetch lodges",
-      }),
-      { status: 500 }
+  } catch (error) {
+    console.error("Error fetching property:", error);
+    return NextResponse.json(
+      { success: false, error: "Internal Server Error" },
+      { status: 500 },
+      console.log(error)
     );
   }
 }

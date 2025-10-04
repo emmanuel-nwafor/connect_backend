@@ -7,7 +7,7 @@ export async function GET() {
         // Query Firestore for documents where category == "house"
         const q = query(
             collection(db, "lodges"),
-            where("category", "==", "house")
+            where("category", "==", "houses")
         );
 
         const querySnapshot = await getDocs(q);

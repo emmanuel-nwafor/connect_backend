@@ -24,6 +24,7 @@ export async function GET() {
                 createdAt: data.createdAt?.toDate?.().toLocaleDateString() || "N/A",
                 imageUrl: data.imageUrl || null,
                 lastMessage: data.lastMessage,
+                status: data.status,
             };
         });
 

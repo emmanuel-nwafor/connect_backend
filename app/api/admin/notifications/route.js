@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 
 export async function GET(req) {
     try {
-        // 1️⃣ Validate JWT
+        // Validate JWT
         const authHeader = req.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
             return new Response(
@@ -27,7 +27,7 @@ export async function GET(req) {
 
         const userId = decoded.userId;
 
-        // 2️⃣ Fetch user role from Firestore
+        // Fetch user role from Firestore
         const userRef = doc(db, "users", userId);
         const userSnap = await getDoc(userRef);
 
@@ -48,7 +48,7 @@ export async function GET(req) {
             );
         }
 
-        // 3️⃣ Fetch notifications where role == "admin"
+        // Fetch notifications where role == "admin"
         const notiRef = collection(db, "notifications");
         const notiQuery = query(notiRef, where("role", "==", "admin"));
         const notiSnap = await getDocs(notiQuery);
@@ -58,7 +58,7 @@ export async function GET(req) {
             ...doc.data(),
         }));
 
-        // 4️⃣ Return
+        // Return
         return new Response(
             JSON.stringify({ success: true, notifications }),
             { status: 200 }

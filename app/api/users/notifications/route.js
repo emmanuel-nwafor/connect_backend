@@ -52,7 +52,7 @@ export async function GET(req) {
         const notiQuery = query(
             notiRef,
             where("role", "==", userRole),
-            where("userId", "==", userId) // 🔹 restrict to current user
+            where("userId", "==", userId)
         );
         const notiSnap = await getDocs(notiQuery);
 

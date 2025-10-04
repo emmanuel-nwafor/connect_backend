@@ -131,7 +131,17 @@ export async function PATCH(req, { params }) {
         const userSnap = await getDoc(userRef);
 
         if (!userSnap.exists()) {
-            return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+
+
+            const suspendAdmin = userSnap.data();
+
+            // Prevent admins from suspending admins
+            if (suspendAdmin.role === "admin" && auth.decoded.role !== "super-admin") {
+                return NextResponse.json(
+                    { success: false, message: "Only super-admins can delete admins" },
+                    { status: 403 }
+                );
+            } return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
         }
 
         await updateDoc(userRef, { status });

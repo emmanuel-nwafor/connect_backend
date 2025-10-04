@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 export async function POST(req) {
   try {
     const { email, password, isGoogle = false } = await req.json();
-    console.log("Signup payload:", { email, password, isGoogle });
+    console.log("Login payload:", { email, isGoogle });
 
     if (!email || (!isGoogle && !password)) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -22,17 +22,26 @@ export async function POST(req) {
 
     const user = userCredential.user;
 
-    // Check Firestore doc
+    // Check Firestore user doc
     const docRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(docRef);
+
     if (!userDoc.exists()) {
       return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
     }
 
     const data = userDoc.data();
 
+    // ❌ Block login if suspended
+    if (data.status === "suspended") {
+      return NextResponse.json(
+        { error: 'Your account has been suspended by an admin. Please contact support.' },
+        { status: 403 }
+      );
+    }
+
+    // ❌ Profile incomplete
     if (!data.profileCompleted) {
-      // still return token but with redirect
       const token = jwt.sign(
         { userId: user.uid, email: user.email, role: data.role },
         process.env.JWT_SECRET,
@@ -48,7 +57,7 @@ export async function POST(req) {
       }, { status: 403 });
     }
 
-    // ✅ Sign JWT
+    // ✅ Normal login
     const token = jwt.sign(
       { userId: user.uid, email: user.email, role: data.role },
       process.env.JWT_SECRET,
@@ -60,7 +69,7 @@ export async function POST(req) {
       uid: user.uid,
       email: user.email,
       role: data.role,
-      token, // send JWT
+      token,
       redirect: '/users',
     });
 

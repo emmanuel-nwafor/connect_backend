@@ -1,0 +1,1 @@
+// This API is ersponsible for sending the users an email of account suspended.

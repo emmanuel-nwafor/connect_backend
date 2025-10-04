@@ -18,6 +18,8 @@ export async function GET() {
             .join("")
             .toUpperCase()
           : "NA",
+        name: data.fullName,
+        profileImage: data.imageUrl,
         createdAt: data.createdAt?.toDate?.().toLocaleDateString() || "N/A",
       };
     });

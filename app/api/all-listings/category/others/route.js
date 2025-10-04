@@ -4,7 +4,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 
 export async function GET() {
     try {
-        const excludedCategories = ["house", "apartment", "land", "shop"];
+        const excludedCategories = ["houses", "apartment", "land", "shop"];
         const q = query(
             collection(db, "lodges"),
             where("category", "not-in", excludedCategories)

@@ -121,7 +121,7 @@ export async function PATCH(req, { params }) {
         }
 
         const body = await req.json();
-        const { status } = body; // e.g., { status: "suspended" }
+        const { status } = body;
 
         if (!["active", "suspended"].includes(status)) {
             return NextResponse.json({ success: false, message: "Invalid status" }, { status: 400 });
@@ -131,17 +131,17 @@ export async function PATCH(req, { params }) {
         const userSnap = await getDoc(userRef);
 
         if (!userSnap.exists()) {
+            return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+        }
 
+        const suspendAdmin = userSnap.data();
 
-            const suspendAdmin = userSnap.data();
-
-            // Prevent admins from suspending admins
-            if (suspendAdmin.role === "admin" && auth.decoded.role !== "super-admin") {
-                return NextResponse.json(
-                    { success: false, message: "Only super-admins can delete admins" },
-                    { status: 403 }
-                );
-            } return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+        // Prevent admins from suspending admins unless super-admin
+        if (suspendAdmin.role === "admin" && auth.decoded.role !== "super-admin") {
+            return NextResponse.json(
+                { success: false, message: "Only super-admins can suspend admins" },
+                { status: 403 }
+            );
         }
 
         await updateDoc(userRef, { status });

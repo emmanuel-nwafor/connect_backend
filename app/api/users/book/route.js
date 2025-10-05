@@ -100,24 +100,28 @@ export async function POST(req) {
 
         console.log("Booking saved to Firestore with ID:", bookingRef.id);
 
-        // Add notification for admins
+        // Nitify admins
         await addDoc(collection(db, "notifications"), {
             title: "New Booking",
             message: `${userName} booked a lodge ${lodgeId}.`,
             role: "admin",
+            userId: null,
             type: "booking",
             bookingId: bookingRef.id,
             createdAt: serverTimestamp(),
         });
 
+        // Notify users
         await addDoc(collection(db, "notifications"), {
             title: "New Booking",
             message: `You booked a lodge ${lodgeId}.`,
             role: "user",
+            userId: userId,
             type: "booking",
             bookingId: bookingRef.id,
             createdAt: serverTimestamp(),
         });
+
 
         // Initialize Paystack transaction
         const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY?.trim();

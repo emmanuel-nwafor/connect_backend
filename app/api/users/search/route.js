@@ -41,9 +41,15 @@ export async function GET(req) {
       };
     });
 
+    console.log(data)
+
     return new Response(JSON.stringify({ success: true, results: lodges }), {
       status: 200,
+      imageUrls: data.imageUrls || [],
+      title: data.title || "",
+      rentFee: data.rentFee || "",
     });
+
   } catch (err) {
     console.error("Search error:", err);
     return new Response(

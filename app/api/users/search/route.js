@@ -27,6 +27,7 @@ export async function GET(req) {
 
     const lodges = lodgesSnapshot.docs.map((doc) => {
       const data = doc.data();
+      console.log(data)
       return {
         id: doc.id,
         title: data.title || "",
@@ -40,8 +41,6 @@ export async function GET(req) {
         createdAt: data.createdAt || null,
       };
     });
-
-    console.log(data)
 
     return new Response(JSON.stringify({ success: true, results: lodges }), {
       status: 200,

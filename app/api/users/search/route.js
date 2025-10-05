@@ -1,56 +1,39 @@
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q");
 
-  if (!q) {
-    return new Response(
-      JSON.stringify({ success: false, message: "Missing query" }),
-      { status: 400 }
-    );
-  }
-
-  const searchQuery = q.toLowerCase();
-
   try {
     // Lodges Collection
     const lodgesCol = collection(db, "lodges");
-    const lodgesQuery = query(
-      lodgesCol,
-      where("title_lowercase", ">=", searchQuery),
-      where("title_lowercase", "<=", searchQuery + "\uf8ff")
-    );
+    const lodgesSnapshot = await getDocs(lodgesCol);
+    const lodges = lodgesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const lodgesSnapshot = await getDocs(lodgesQuery);
+    let results = lodges;
 
-    const lodges = lodgesSnapshot.docs.map((doc) => {
-      const data = doc.data();
-      console.log(data)
-      return {
-        id: doc.id,
-        title: data.title || "",
-        location: data.location || "",
-        rentFee: data.rentFee || "",
-        bedrooms: data.bedrooms || 0,
-        bathrooms: data.bathrooms || 0,
-        category: data.category || "",
-        propertyType: data.propertyType || "",
-        imageUrls: data.imageUrls || [],
-        createdAt: data.createdAt || null,
-      };
-    });
+    if (q && q.trim() !== "") {
+      const searchQuery = q.toLowerCase();
+      results = lodges.filter(lodge =>
+        lodge.title?.toLowerCase().includes(searchQuery) ||
+        lodge.description?.toLowerCase().includes(searchQuery) ||
+        lodge.location?.toLowerCase().includes(searchQuery) ||
+        lodge.propertyType?.toLowerCase().includes(searchQuery) ||
+        lodge.category?.toLowerCase().includes(searchQuery)
+      );
+    }
 
-    return new Response(JSON.stringify({ success: true, results: lodges }), {
+    // fallback: if nothing matches, return all lodges
+    if (results.length === 0) {
+      results = lodges;
+    }
+
+    return new Response(JSON.stringify({ success: true, results }), {
       status: 200,
-      imageUrls: data.imageUrls || [],
-      title: data.title || "",
-      rentFee: data.rentFee || "",
     });
-
   } catch (err) {
-    console.error("Search error:", err);
+    console.error(err);
     return new Response(
       JSON.stringify({ success: false, message: "Internal server error" }),
       { status: 500 }

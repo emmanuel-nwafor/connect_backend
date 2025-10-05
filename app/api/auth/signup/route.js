@@ -37,7 +37,7 @@ export async function POST(req) {
         title: "New User Signup",
         message: `${email} just signed up.`,
         role: "admin",
-
+        type: welcome,
         createdAt: serverTimestamp(),
       });
 
@@ -46,7 +46,7 @@ export async function POST(req) {
         title: "Welcome!",
         message: `Welcome to the app, ${email}!`,
         role: "user",
-
+        type: "welcome",
         createdAt: serverTimestamp(),
       });
 

@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req) {
     try {
-        // 1️⃣ Validate JWT
+        // Validate JWT
         const authHeader = req.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
             return NextResponse.json({ error: "No token provided" }, { status: 401 });
@@ -21,7 +21,7 @@ export async function POST(req) {
 
         const userId = decoded.userId;
 
-        // 2️⃣ Parse body
+        // Parse body
         const body = await req.json();
         const { fullName, phone, location, imageUrl } = body;
 
@@ -29,14 +29,14 @@ export async function POST(req) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        // 3️⃣ Ensure user exists
+        // Ensure user exists
         const userRef = doc(db, "users", userId);
         const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
-        // 4️⃣ Update profile
+        // Update profile
         await setDoc(
             userRef,
             {
@@ -50,7 +50,11 @@ export async function POST(req) {
             { merge: true }
         );
 
-        return NextResponse.json({ message: "Profile completed successfully" });
+        return NextResponse.json({
+            success: true,
+            message: "Profile completed successfully"
+        });
+
     } catch (err) {
         console.error("Profile completion error:", err);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });

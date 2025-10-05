@@ -1,10 +1,11 @@
+// /api/users/notifications/route.js
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
 export async function GET(req) {
     try {
-        // Validate JWT
+        // 1️⃣ Validate JWT
         const authHeader = req.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
             return new Response(
@@ -26,7 +27,7 @@ export async function GET(req) {
 
         const userId = decoded.userId;
 
-        // Fetch user role from Firestore
+        // 2️⃣ Fetch user role from Firestore
         const userRef = doc(db, "users", userId);
         const userSnap = await getDoc(userRef);
 
@@ -47,13 +48,9 @@ export async function GET(req) {
             );
         }
 
-        // Fetch notifications for this user only
+        // 3️⃣ Fetch notifications where role == userRole
         const notiRef = collection(db, "notifications");
-        const notiQuery = query(
-            notiRef,
-            where("role", "==", userRole),
-            where("userId", "==", userId)
-        );
+        const notiQuery = query(notiRef, where("role", "==", userRole));
         const notiSnap = await getDocs(notiQuery);
 
         const notifications = notiSnap.docs.map((doc) => ({
@@ -61,7 +58,7 @@ export async function GET(req) {
             ...doc.data(),
         }));
 
-        // Return notifications
+        // 4️⃣ Return notifications
         return new Response(
             JSON.stringify({ success: true, notifications }),
             { status: 200 }

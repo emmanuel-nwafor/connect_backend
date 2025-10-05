@@ -24,6 +24,7 @@ export async function GET(req) {
             fullName: doc.data().fullName,
             imageUrl: doc.data().imageUrl,
             email: doc.data().email,
+            phone: doc.data().phone
         }));
 
         return new Response(JSON.stringify({ success: true, admins }), { status: 200 });

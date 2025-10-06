@@ -2,6 +2,7 @@
 import { db } from "@/lib/firebase";
 import crypto from "crypto";
 import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import jwt from "jsonwebtoken";
 
 export async function POST(req) {
     try {
@@ -24,7 +25,7 @@ export async function POST(req) {
 
         if (event.event === "charge.success") {
             const { metadata, status, reference } = event.data;
-            const { bookingId, userId } = metadata;
+            const { bookingId, userId, lodgeId } = metadata;
 
             if (bookingId && userId) {
                 const bookingRef = doc(db, "users", userId, "bookings", bookingId);
@@ -68,14 +69,27 @@ export async function POST(req) {
                         createdAt: serverTimestamp(),
                     });
 
-                    // 7️⃣ Call booking email API
+                    // 7️⃣ Generate JWT token for internal API call
+                    const token = jwt.sign(
+                        { userId },
+                        process.env.JWT_SECRET,
+                        { expiresIn: "1h" }
+                    );
+
+                    // 8️⃣ Call booking email API
                     if (userEmail) {
                         try {
-                            const emailRes = await fetch(`${process.env.NEXT_PUBLIC_FRONTEND_URL}/api/emails/send-booking-email`, {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ bookingId, userId, lodgeId: metadata.lodgeId }),
-                            });
+                            const emailRes = await fetch(
+                                `${process.env.NEXT_PUBLIC_FRONTEND_URL}/api/emails/send-booking-email`,
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "Authorization": `Bearer ${token}`,
+                                    },
+                                    body: JSON.stringify({ bookingId, userId, lodgeId }),
+                                }
+                            );
                             const emailData = await emailRes.json();
                             console.log("📧 Booking email sent:", emailData);
                         } catch (err) {

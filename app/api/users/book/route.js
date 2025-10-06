@@ -1,3 +1,4 @@
+// app/api/bookings/route.js
 import { db } from "@/lib/firebase";
 import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import jwt from "jsonwebtoken";
@@ -8,8 +9,6 @@ export async function POST(req) {
 
         // Validate JWT
         const authHeader = req.headers.get("authorization");
-        console.log("Authorization header:", authHeader);
-
         if (!authHeader?.startsWith("Bearer ")) {
             return new Response(
                 JSON.stringify({ success: false, error: "No token provided" }),
@@ -21,7 +20,6 @@ export async function POST(req) {
         let decoded;
         try {
             decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log("JWT decoded:", decoded);
         } catch (err) {
             return new Response(
                 JSON.stringify({ success: false, error: "Invalid token" }),
@@ -34,7 +32,6 @@ export async function POST(req) {
         // Fetch user from Firestore
         const userRef = doc(db, "users", userId);
         const userSnap = await getDoc(userRef);
-
         if (!userSnap.exists()) {
             return new Response(
                 JSON.stringify({ success: false, error: "User not found" }),
@@ -44,11 +41,6 @@ export async function POST(req) {
 
         const userData = userSnap.data();
         const userEmail = userData.email;
-        const userName = userData.fullName || "User";
-
-        console.log("User email:", userEmail);
-        console.log("User name:", userName);
-
         if (!userEmail) {
             return new Response(
                 JSON.stringify({ success: false, error: "User email not found" }),
@@ -75,7 +67,6 @@ export async function POST(req) {
             );
         }
 
-        // Validate amount
         const numericAmount = Number(amount);
         if (isNaN(numericAmount) || numericAmount <= 0) {
             return new Response(
@@ -85,43 +76,19 @@ export async function POST(req) {
         }
 
         const amountInKobo = Math.round(numericAmount * 100);
-        console.log("Amount in kobo:", amountInKobo);
 
-        // Save booking to Firestore before initializing Paystack
+        // Save booking as pending
         const bookingRef = await addDoc(
             collection(db, "users", userId, "bookings"),
             {
                 lodgeId,
                 amount: numericAmount,
-                status: "pending", // until Paystack confirms
+                status: "pending",
                 createdAt: serverTimestamp(),
             }
         );
 
         console.log("Booking saved to Firestore with ID:", bookingRef.id);
-
-        // Nitify admins
-        await addDoc(collection(db, "notifications"), {
-            title: "New Booking",
-            message: `${userName} booked a lodge ${lodgeId}.`,
-            role: "admin",
-            userId: null,
-            type: "booking",
-            bookingId: bookingRef.id,
-            createdAt: serverTimestamp(),
-        });
-
-        // Notify users
-        await addDoc(collection(db, "notifications"), {
-            title: "New Booking",
-            message: `You booked a lodge ${lodgeId}.`,
-            role: "user",
-            userId: userId,
-            type: "booking",
-            bookingId: bookingRef.id,
-            createdAt: serverTimestamp(),
-        });
-
 
         // Initialize Paystack transaction
         const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY?.trim();
@@ -141,18 +108,12 @@ export async function POST(req) {
             body: JSON.stringify({
                 email: userEmail,
                 amount: amountInKobo,
-                metadata: {
-                    lodgeId,
-                    bookingId: bookingRef.id,
-                    userId, // Added userId for webhook
-                },
+                metadata: { lodgeId, bookingId: bookingRef.id, userId },
                 callback_url: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/payment-callback`,
             }),
         });
 
         const initData = await initRes.json();
-        console.log("Paystack response:", initData);
-
         if (!initData.status) {
             return new Response(
                 JSON.stringify({

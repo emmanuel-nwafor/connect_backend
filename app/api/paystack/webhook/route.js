@@ -1,7 +1,7 @@
+// /api/paystack/webhook/route.js
 import { db } from "@/lib/firebase";
 import crypto from "crypto";
 import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
-import fetch from "node-fetch"; // if needed for calling your email API
 
 export async function POST(req) {
     try {
@@ -26,56 +26,62 @@ export async function POST(req) {
             const { metadata, status, reference } = event.data;
             const { bookingId, userId } = metadata;
 
-            if (bookingId && userId && status === "success") {
+            if (bookingId && userId) {
                 const bookingRef = doc(db, "users", userId, "bookings", bookingId);
 
                 // 4️⃣ Update booking status
                 await updateDoc(bookingRef, {
-                    status: "success",
+                    status: status === "success" ? "success" : "failed",
                     updatedAt: new Date(),
                     reference,
                 });
-
                 console.log("✅ Booking updated in Firestore:", bookingId);
 
-                // 5️⃣ Fetch user info for notifications and email
+                // 5️⃣ Fetch user info
                 const userRef = doc(db, "users", userId);
                 const userSnap = await getDoc(userRef);
-                const userData = userSnap.data();
-                const userName = userData.fullName || "User";
+                const userData = userSnap.exists() ? userSnap.data() : {};
                 const userEmail = userData.email;
+                const userName = userData.fullName || "User";
 
-                // 6️⃣ Add notifications for admin and user
-                await addDoc(collection(db, "notifications"), {
-                    title: "New Booking",
-                    message: `${userName} booked a lodge ${bookingId}.`,
-                    role: "admin",
-                    userId: null,
-                    type: "booking",
-                    bookingId,
-                    createdAt: serverTimestamp(),
-                });
-
-                await addDoc(collection(db, "notifications"), {
-                    title: "Booking Confirmed",
-                    message: `You booked a lodge ${bookingId}.`,
-                    role: "user",
-                    userId,
-                    type: "booking",
-                    bookingId,
-                    createdAt: serverTimestamp(),
-                });
-
-                // 7️⃣ Call your booking email API
-                try {
-                    await fetch(`${process.env.NEXT_PUBLIC_FRONTEND_URL}/api/emails/send-booking-email`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ bookingId, userId }),
+                // 6️⃣ Create notifications only if success
+                if (status === "success") {
+                    // Admin notification
+                    await addDoc(collection(db, "notifications"), {
+                        title: "New Booking",
+                        message: `${userName} booked a lodge.`,
+                        role: "admin",
+                        userId: null,
+                        type: "booking",
+                        bookingId,
+                        createdAt: serverTimestamp(),
                     });
-                    console.log("✅ Booking email sent");
-                } catch (emailErr) {
-                    console.error("❌ Error sending booking email:", emailErr);
+
+                    // User notification
+                    await addDoc(collection(db, "notifications"), {
+                        title: "Booking Confirmed",
+                        message: `You successfully booked a lodge.`,
+                        role: "user",
+                        userId,
+                        type: "booking",
+                        bookingId,
+                        createdAt: serverTimestamp(),
+                    });
+
+                    // 7️⃣ Call booking email API
+                    if (userEmail) {
+                        try {
+                            const emailRes = await fetch(`${process.env.NEXT_PUBLIC_FRONTEND_URL}/api/emails/send-booking-email`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ bookingId, userId, lodgeId: metadata.lodgeId }),
+                            });
+                            const emailData = await emailRes.json();
+                            console.log("📧 Booking email sent:", emailData);
+                        } catch (err) {
+                            console.error("❌ Failed to send booking email:", err);
+                        }
+                    }
                 }
             }
         }

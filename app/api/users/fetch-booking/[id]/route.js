@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 
 export async function GET(req, { params }) {
     try {
-        console.log("Fetch single booking request received");
+        console.log("📩 Fetch single booking request received");
 
         // Validate JWT
         const authHeader = req.headers.get("authorization");
@@ -20,7 +20,7 @@ export async function GET(req, { params }) {
         let decoded;
         try {
             decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log("JWT decoded:", decoded);
+            console.log("✅ JWT decoded:", decoded);
         } catch (err) {
             return new Response(
                 JSON.stringify({ success: false, error: "Invalid token" }),
@@ -44,13 +44,31 @@ export async function GET(req, { params }) {
 
         const bookingData = bookingSnap.data();
 
+        // Fetch user details (name and email)
+        const userRef = doc(db, "users", userId);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+            return new Response(
+                JSON.stringify({ success: false, error: "User not found" }),
+                { status: 404 }
+            );
+        }
+
+        const userData = userSnap.data();
+
+        // Combine booking + user info
+        const combinedData = {
+            id: bookingSnap.id,
+            ...bookingData,
+            userName: userData.fullName || "N/A",
+            userEmail: userData.email || "N/A",
+        };
+
         return new Response(
             JSON.stringify({
                 success: true,
-                booking: {
-                    id: bookingSnap.id,
-                    ...bookingData,
-                },
+                booking: combinedData,
             }),
             { status: 200 }
         );

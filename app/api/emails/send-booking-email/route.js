@@ -5,54 +5,54 @@ import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 
 export async function POST(req) {
+  try {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ success: false, error: "No token provided" }), { status: 401 });
+    }
+
+    const token = authHeader.split(" ")[1];
+    let decoded;
     try {
-        const authHeader = req.headers.get("authorization");
-        if (!authHeader?.startsWith("Bearer ")) {
-            return new Response(JSON.stringify({ success: false, error: "No token provided" }), { status: 401 });
-        }
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
+    }
 
-        const token = authHeader.split(" ")[1];
-        let decoded;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_SECRET);
-        } catch {
-            return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
-        }
+    const { bookingId, userId } = await req.json();
+    if (!bookingId || !userId) {
+      return new Response(JSON.stringify({ success: false, error: "bookingId and userId are required" }), { status: 400 });
+    }
 
-        const { bookingId, userId } = await req.json();
-        if (!bookingId || !userId) {
-            return new Response(JSON.stringify({ success: false, error: "bookingId and userId are required" }), { status: 400 });
-        }
+    if (decoded.userId !== userId) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized request" }), { status: 403 });
+    }
 
-        if (decoded.userId !== userId) {
-            return new Response(JSON.stringify({ success: false, error: "Unauthorized request" }), { status: 403 });
-        }
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      return new Response(JSON.stringify({ success: false, error: "User not found" }), { status: 404 });
+    }
+    const userData = userSnap.data();
 
-        const userRef = doc(db, "users", userId);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-            return new Response(JSON.stringify({ success: false, error: "User not found" }), { status: 404 });
-        }
-        const userData = userSnap.data();
+    const bookingRef = doc(db, "users", userId, "bookings", bookingId);
+    const bookingSnap = await getDoc(bookingRef);
+    if (!bookingSnap.exists()) {
+      return new Response(JSON.stringify({ success: false, error: "Booking not found" }), { status: 404 });
+    }
+    const bookingData = bookingSnap.data();
 
-        const bookingRef = doc(db, "users", userId, "bookings", bookingId);
-        const bookingSnap = await getDoc(bookingRef);
-        if (!bookingSnap.exists()) {
-            return new Response(JSON.stringify({ success: false, error: "Booking not found" }), { status: 404 });
-        }
-        const bookingData = bookingSnap.data();
+    const items = bookingData.items || []; // expect array like [{ name, price }, ...]
 
-        const items = bookingData.items || []; // expect array like [{ name, price }, ...]
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
-
-        const emailTemplate = `
+    const emailTemplate = `
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -76,7 +76,7 @@ export async function POST(req) {
         <body>
           <div class="container">
             <div class="header">
-              <img src="https://res.cloudinary.com/dbczfoqnc/image/upload/v1757032861/Home-studio_logo-removebg-preview_gbq77s.png" alt="Company Logo">
+              <img src="https://res.cloudinary.com/dbczfoqnc/image/upload/v1757032861/Home-studio_logo-removebg-preview_gbq77s.png" alt="connect Logo">
               <h2>Booking Receipt</h2>
             </div>
 
@@ -110,7 +110,7 @@ export async function POST(req) {
             </table>
             ` : ""}
 
-            <p class="total">Total Paid: ₦${Number(bookingData.amount / 100).toLocaleString()}</p>
+            <p class="total">Total Paid: ₦${Number(bookingData.amount).toLocaleString()}</p>
 
             <div class="footer">
               <p>&copy; 2025 CONNECT. All rights reserved.</p>
@@ -121,16 +121,16 @@ export async function POST(req) {
         </html>
         `;
 
-        await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: userData.email,
-            subject: "Your Booking Receipt",
-            html: emailTemplate,
-        });
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: userData.email,
+      subject: "Your Booking Receipt",
+      html: emailTemplate,
+    });
 
-        return new Response(JSON.stringify({ success: true, message: "Booking email sent successfully" }), { status: 200 });
-    } catch (err) {
-        console.error("❌ Booking email error:", err);
-        return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
-    }
+    return new Response(JSON.stringify({ success: true, message: "Booking email sent successfully" }), { status: 200 });
+  } catch (err) {
+    console.error("❌ Booking email error:", err);
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+  }
 }

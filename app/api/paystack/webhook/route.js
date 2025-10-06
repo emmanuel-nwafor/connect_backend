@@ -6,10 +6,10 @@ import jwt from "jsonwebtoken";
 
 export async function POST(req) {
     try {
-        // 1️⃣ Read raw request body
+        // Read raw request body
         const body = await req.text();
 
-        // 2️⃣ Verify Paystack signature
+        // Verify Paystack signature
         const secret = process.env.PAYSTACK_SECRET_KEY;
         const hash = crypto.createHmac("sha512", secret).update(body).digest("hex");
         const signature = req.headers.get("x-paystack-signature");
@@ -19,7 +19,7 @@ export async function POST(req) {
             return new Response("Invalid signature", { status: 401 });
         }
 
-        // 3️⃣ Parse event data
+        // Parse event data
         const event = JSON.parse(body);
         console.log("📌 Paystack webhook event:", event);
 
@@ -30,7 +30,7 @@ export async function POST(req) {
             if (bookingId && userId) {
                 const bookingRef = doc(db, "users", userId, "bookings", bookingId);
 
-                // 4️⃣ Update booking status
+                // Update booking status
                 await updateDoc(bookingRef, {
                     status: status === "success" ? "success" : "failed",
                     updatedAt: new Date(),
@@ -38,14 +38,14 @@ export async function POST(req) {
                 });
                 console.log("✅ Booking updated in Firestore:", bookingId);
 
-                // 5️⃣ Fetch user info
+                // Fetch user info
                 const userRef = doc(db, "users", userId);
                 const userSnap = await getDoc(userRef);
                 const userData = userSnap.exists() ? userSnap.data() : {};
                 const userEmail = userData.email;
                 const userName = userData.fullName || "User";
 
-                // 6️⃣ Create notifications only if success
+                // Create notifications only if success
                 if (status === "success") {
                     // Admin notification
                     await addDoc(collection(db, "notifications"), {
@@ -69,14 +69,14 @@ export async function POST(req) {
                         createdAt: serverTimestamp(),
                     });
 
-                    // 7️⃣ Generate JWT token for internal API call
+                    // Generate JWT token for internal API call
                     const token = jwt.sign(
                         { userId },
                         process.env.JWT_SECRET,
                         { expiresIn: "1h" }
                     );
 
-                    // 8️⃣ Call booking email API
+                    // Call booking email API
                     if (userEmail) {
                         try {
                             const emailRes = await fetch(

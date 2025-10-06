@@ -41,6 +41,8 @@ export async function POST(req) {
 
         const userData = userSnap.data();
         const userEmail = userData.email;
+        const userFullName = userData.fullName || userData.name || "N/A";
+
         if (!userEmail) {
             return new Response(
                 JSON.stringify({ success: false, error: "User email not found" }),
@@ -77,16 +79,15 @@ export async function POST(req) {
 
         const amountInKobo = Math.round(numericAmount * 100);
 
-        // Save booking as pending
-        const bookingRef = await addDoc(
-            collection(db, "users", userId, "bookings"),
-            {
-                lodgeId,
-                amount: numericAmount,
-                status: "pending",
-                createdAt: serverTimestamp(),
-            }
-        );
+        // Save booking as pending (with user's name & email)
+        const bookingRef = await addDoc(collection(db, "users", userId, "bookings"), {
+            lodgeId,
+            amount: numericAmount,
+            status: "pending",
+            customerName: userFullName,
+            customerEmail: userEmail,
+            createdAt: serverTimestamp(),
+        });
 
         console.log("Booking saved to Firestore with ID:", bookingRef.id);
 
@@ -118,7 +119,7 @@ export async function POST(req) {
             return new Response(
                 JSON.stringify({
                     success: false,
-                    error: initData.message || "Paystack init failed",
+                    error: initData.message || "Paystack initialization failed",
                 }),
                 { status: 400 }
             );
@@ -145,6 +146,7 @@ export async function POST(req) {
 export async function GET(req) {
     try {
         console.log("Booking request fetched");
+
         // Validate JWT
         const authHeader = req.headers.get("authorization");
         console.log("Authorization header:", authHeader);
@@ -168,8 +170,15 @@ export async function GET(req) {
             );
         }
 
-
+        return new Response(
+            JSON.stringify({ success: true, message: "Bookings endpoint active" }),
+            { status: 200 }
+        );
     } catch (error) {
-
+        console.error("❌ GET Bookings error:", error);
+        return new Response(
+            JSON.stringify({ success: false, error: error.message }),
+            { status: 500 }
+        );
     }
 }

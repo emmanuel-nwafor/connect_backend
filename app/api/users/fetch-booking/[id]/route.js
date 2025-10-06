@@ -1,4 +1,3 @@
-// /api/users/fetch-booking/[id]/route.js
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";
@@ -57,12 +56,37 @@ export async function GET(req, { params }) {
 
         const userData = userSnap.data();
 
-        // Combine booking + user info
+        // Fetch property details (if not already stored in booking)
+        let propertyName = bookingData.propertyName || null;
+        let propertyImage = bookingData.propertyImage || null;
+
+        if (!propertyName || !propertyImage) {
+            try {
+                const lodgeRef = doc(db, "lodges", bookingData.lodgeId);
+                const lodgeSnap = await getDoc(lodgeRef);
+
+                if (lodgeSnap.exists()) {
+                    const lodgeData = lodgeSnap.data();
+                    propertyName = lodgeData.title || "N/A";
+                    propertyImage = Array.isArray(lodgeData.imageUrls)
+                        ? lodgeData.imageUrls[0]
+                        : null;
+                } else {
+                    console.warn("⚠️ Lodge not found for ID:", bookingData.lodgeId);
+                }
+            } catch (err) {
+                console.error("⚠️ Error fetching lodge details:", err);
+            }
+        }
+
+        // Combine all data
         const combinedData = {
             id: bookingSnap.id,
             ...bookingData,
             userName: userData.fullName || "N/A",
             userEmail: userData.email || "N/A",
+            propertyName: propertyName || "N/A",
+            propertyImage: propertyImage || null,
         };
 
         return new Response(

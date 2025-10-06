@@ -1,4 +1,3 @@
-// app/api/bookings/route.js
 import { db } from "@/lib/firebase";
 import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import jwt from "jsonwebtoken";
@@ -79,17 +78,34 @@ export async function POST(req) {
 
         const amountInKobo = Math.round(numericAmount * 100);
 
-        // Save booking as pending (with user's name & email)
+        // Fetch property details from lodges collection
+        const lodgeRef = doc(db, "lodges", lodgeId);
+        const lodgeSnap = await getDoc(lodgeRef);
+
+        let propertyName = "N/A";
+        let propertyImage = null;
+
+        if (lodgeSnap.exists()) {
+            const lodgeData = lodgeSnap.data();
+            propertyName = lodgeData.title || "N/A";
+            propertyImage = Array.isArray(lodgeData.imageUrls) ? lodgeData.imageUrls[0] : null;
+        } else {
+            console.warn("⚠️ Lodge not found for ID:", lodgeId);
+        }
+
+        // Save booking (include user & property info)
         const bookingRef = await addDoc(collection(db, "users", userId, "bookings"), {
             lodgeId,
             amount: numericAmount,
             status: "pending",
             customerName: userFullName,
             customerEmail: userEmail,
+            propertyName,
+            propertyImage,
             createdAt: serverTimestamp(),
         });
 
-        console.log("Booking saved to Firestore with ID:", bookingRef.id);
+        console.log("✅ Booking saved with property info. ID:", bookingRef.id);
 
         // Initialize Paystack transaction
         const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY?.trim();
@@ -125,7 +141,6 @@ export async function POST(req) {
             );
         }
 
-        // Return authorization URL + bookingId
         return new Response(
             JSON.stringify({
                 success: true,
@@ -138,46 +153,6 @@ export async function POST(req) {
         console.error("❌ Booking error:", err);
         return new Response(
             JSON.stringify({ success: false, error: err.message }),
-            { status: 500 }
-        );
-    }
-}
-
-export async function GET(req) {
-    try {
-        console.log("Booking request fetched");
-
-        // Validate JWT
-        const authHeader = req.headers.get("authorization");
-        console.log("Authorization header:", authHeader);
-
-        if (!authHeader?.startsWith("Bearer ")) {
-            return new Response(
-                JSON.stringify({ success: false, error: "No token provided" }),
-                { status: 401 }
-            );
-        }
-
-        const token = authHeader.split(" ")[1];
-        let decoded;
-        try {
-            decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log("JWT decoded:", decoded);
-        } catch (err) {
-            return new Response(
-                JSON.stringify({ success: false, error: "Invalid token" }),
-                { status: 401 }
-            );
-        }
-
-        return new Response(
-            JSON.stringify({ success: true, message: "Bookings endpoint active" }),
-            { status: 200 }
-        );
-    } catch (error) {
-        console.error("❌ GET Bookings error:", error);
-        return new Response(
-            JSON.stringify({ success: false, error: error.message }),
             { status: 500 }
         );
     }

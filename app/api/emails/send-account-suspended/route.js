@@ -1,1 +1,143 @@
-// This API is ersponsible for sending the users an email of account suspended.
+// /api/emails/send-account-suspended-email/route.js
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
+
+export async function POST(req) {
+    try {
+        console.log("📩 Account Suspension Email API triggered");
+
+        const authHeader = req.headers.get("authorization");
+        if (!authHeader?.startsWith("Bearer ")) {
+            console.log("❌ No token provided");
+            return new Response(
+                JSON.stringify({ success: false, error: "No token provided" }),
+                { status: 401 }
+            );
+        }
+
+        const token = authHeader.split(" ")[1];
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log("✅ Token verified:", decoded);
+        } catch (err) {
+            console.log("❌ Invalid token:", err.message);
+            return new Response(
+                JSON.stringify({ success: false, error: "Invalid token" }),
+                { status: 401 }
+            );
+        }
+
+        const { userId, reason } = await req.json();
+        if (!userId) {
+            console.log("❌ userId missing in request body");
+            return new Response(
+                JSON.stringify({ success: false, error: "userId is required" }),
+                { status: 400 }
+            );
+        }
+
+        if (decoded.userId !== userId) {
+            console.log("❌ Unauthorized request: token mismatch");
+            return new Response(
+                JSON.stringify({ success: false, error: "Unauthorized request" }),
+                { status: 403 }
+            );
+        }
+
+        // Fetch user info
+        console.log("📄 Fetching user from Firestore:", userId);
+        const userRef = doc(db, "users", userId);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+            console.log("❌ User not found in database");
+            return new Response(
+                JSON.stringify({ success: false, error: "User not found" }),
+                { status: 404 }
+            );
+        }
+
+        const userData = userSnap.data();
+        console.log("✅ User data fetched:", userData.email);
+
+        // Setup email transporter
+        const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+
+        // Email Template
+        const emailTemplate = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin:0; padding:0; }
+          .container { max-width: 700px; margin: 30px auto; background: #fff; padding: 25px; border-radius: 8px; }
+          .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+          .header img { max-width: 150px; margin-bottom: 10px; }
+          h2 { color: #d93025; }
+          p { line-height: 1.6; color: #444; font-size: 15px; }
+          .reason { background: #fce8e6; padding: 12px; border-left: 4px solid #d93025; margin: 15px 0; }
+          .footer { text-align: center; font-size: 12px; color: #777; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="https://res.cloudinary.com/dbczfoqnc/image/upload/v1757032861/Home-studio_logo-removebg-preview_gbq77s.png" alt="Connect Logo">
+            <h2>Account Suspension Notice</h2>
+          </div>
+
+          <p>Hello <b>${userData.fullName || "User"}</b>,</p>
+
+          <p>We regret to inform you that your account on <b>Connect</b> has been temporarily suspended.</p>
+
+          <div class="reason">
+            <p><b>Reason:</b> ${reason || "Violation of Connect’s community or usage policies."}</p>
+          </div>
+
+          <p>At Connect, we are committed to maintaining a trusted platform where users can confidently discover, book, and manage properties. To ensure fairness and security for everyone, accounts may be suspended for reasons such as suspicious activities, policy violations, or misuse of our services.</p>
+
+          <p>If you believe this was a mistake or would like to appeal this decision, kindly contact our support team. We’ll review your case and get back to you as soon as possible.</p>
+
+          <p>We appreciate your understanding and cooperation as we work to keep our community safe and reliable for all users.</p>
+
+          <div class="footer">
+            <p>&copy; 2025 CONNECT. All rights reserved.</p>
+            <p>For support or inquiries, contact <b>support@connect.com</b>.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+        // Send email
+        await transporter.sendMail({
+            from: `"Connect Support" <${process.env.EMAIL_USER}>`,
+            to: userData.email,
+            subject: "Account Suspension Notice - Connect",
+            html: emailTemplate,
+        });
+
+        console.log("✅ Account suspension email sent successfully to:", userData.email);
+
+        return new Response(
+            JSON.stringify({ success: true, message: "Account suspension email sent successfully" }),
+            { status: 200 }
+        );
+    } catch (err) {
+        console.error("❌ Account suspension email error:", err);
+        return new Response(
+            JSON.stringify({ success: false, error: err.message }),
+            { status: 500 }
+        );
+    }
+}

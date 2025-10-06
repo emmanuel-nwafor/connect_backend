@@ -105,7 +105,7 @@ export async function POST(req) {
         : ""
       }
             <p><b>Property Name:</b> ${lodgeData?.name || "N/A"}</p>
-            <p><b>Property Location:</b> ${lodgeData?.address || "N/A"}</p>
+            <p><b>Property Location:</b> ${lodgeData?.location || "N/A"}</p>
           </div>
 
           <p class="total">Total Paid: ₦${Number(bookingData.amount).toLocaleString()}</p>

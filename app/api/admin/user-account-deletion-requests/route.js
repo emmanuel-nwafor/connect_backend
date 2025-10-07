@@ -1,4 +1,3 @@
-// /api/admin/user-account-deletion-request/route.js
 import { db } from "@/lib/firebase";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import jwt from "jsonwebtoken";
@@ -14,11 +13,11 @@ export async function GET(req) {
         let decoded;
         try {
             decoded = jwt.verify(token, process.env.JWT_SECRET);
-        } catch (err) {
+        } catch {
             return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
         }
 
-        // Check admin role
+        // Ensure user is admin
         if (!decoded.role || decoded.role !== "admin") {
             return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), { status: 403 });
         }
@@ -26,11 +25,11 @@ export async function GET(req) {
         const q = query(collection(db, "deletionRequests"), orderBy("createdAt", "desc"));
         const snapshot = await getDocs(q);
 
-        const requests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const requests = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
         return new Response(JSON.stringify({ success: true, requests }), { status: 200 });
     } catch (err) {
         console.error("❌ Fetch deletion requests error:", err);
-        return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+        return new Response(JSON.stringify({ success: false, error: err.message || "Server error" }), { status: 500 });
     }
 }

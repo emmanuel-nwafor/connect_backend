@@ -1,4 +1,5 @@
 // /api/admin/user-account-deletion-request/[id]/route.js
+
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";
@@ -14,11 +15,10 @@ export async function POST(req, { params }) {
         let decoded;
         try {
             decoded = jwt.verify(token, process.env.JWT_SECRET);
-        } catch (err) {
+        } catch {
             return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
         }
 
-        // Check admin role
         if (!decoded.role || decoded.role !== "admin") {
             return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), { status: 403 });
         }
@@ -28,12 +28,13 @@ export async function POST(req, { params }) {
             return new Response(JSON.stringify({ success: false, error: "Invalid status" }), { status: 400 });
         }
 
-        const docRef = doc(db, "deletionRequests", params.id);
+        const { id } = params;
+        const docRef = doc(db, "deletionRequests", id);
         await updateDoc(docRef, { status });
 
-        return new Response(JSON.stringify({ success: true, message: "Status updated successfully" }), { status: 200 });
+        return new Response(JSON.stringify({ success: true, message: "Request updated successfully" }), { status: 200 });
     } catch (err) {
-        console.error("❌ Update deletion request status error:", err);
-        return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+        console.error("❌ Update deletion request error:", err);
+        return new Response(JSON.stringify({ success: false, error: err.message || "Server error" }), { status: 500 });
     }
 }

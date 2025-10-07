@@ -23,18 +23,33 @@ export async function POST(req, { params }) {
             return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), { status: 403 });
         }
 
-        const { status } = await req.json();
+        // Parse JSON safely
+        let body;
+        try {
+            body = await req.json();
+        } catch (err) {
+            return new Response(JSON.stringify({ success: false, error: "Invalid JSON body" }), { status: 400 });
+        }
+
+        const { status } = body;
         if (!["approved", "rejected"].includes(status)) {
             return new Response(JSON.stringify({ success: false, error: "Invalid status" }), { status: 400 });
         }
 
         const { id } = params;
         const docRef = doc(db, "deletionRequests", id);
+
         await updateDoc(docRef, { status });
 
-        return new Response(JSON.stringify({ success: true, message: "Request updated successfully" }), { status: 200 });
+        return new Response(JSON.stringify({ success: true, message: "Request updated successfully" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+        });
     } catch (err) {
         console.error("❌ Update deletion request error:", err);
-        return new Response(JSON.stringify({ success: false, error: err.message || "Server error" }), { status: 500 });
+        return new Response(JSON.stringify({ success: false, error: err.message || "Server error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+        });
     }
 }

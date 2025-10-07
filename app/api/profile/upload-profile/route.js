@@ -3,7 +3,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
-// Getting of users infos
+// Fetch profile
 export async function GET(req) {
     try {
         const authHeader = req.headers.get("authorization");
@@ -35,6 +35,8 @@ export async function GET(req) {
                 fullName: data.fullName || null,
                 email: data.email || null,
                 imageUrl: data.imageUrl || null,
+                location: data.location || null,
+                phone: data.phone || null,
             }),
             { status: 200 }
         );
@@ -44,7 +46,7 @@ export async function GET(req) {
     }
 }
 
-// uploading of profile images both admin and users
+// Update profile
 export async function POST(req) {
     try {
         const authHeader = req.headers.get("authorization");
@@ -60,33 +62,43 @@ export async function POST(req) {
             return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
         }
 
-        const { imageUrl } = await req.json();
-        if (!imageUrl) {
-            return new Response(JSON.stringify({ success: false, error: "No imageUrl provided" }), { status: 400 });
-        }
-
         const userId = decoded.userId;
         const userRef = doc(db, "users", userId);
+        const reqBody = await req.json();
 
-        // Update only the imageUrl
-        await updateDoc(userRef, { imageUrl });
+        // Remove email from update if present
+        const { email, ...allowedUpdates } = reqBody;
 
-        // Fetch updated user document
+        // Only update fields if provided
+        const updateData = {};
+        for (const key in allowedUpdates) {
+            if (allowedUpdates[key] !== undefined && allowedUpdates[key] !== null) {
+                updateData[key] = allowedUpdates[key];
+            }
+        }
+
+        await updateDoc(userRef, updateData);
+
+        // Fetch updated document
         const updatedDoc = await getDoc(userRef);
         const data = updatedDoc.data();
 
         return new Response(
             JSON.stringify({
                 success: true,
-                message: "Profile image updated",
-                fullName: data.fullName || null,
-                email: data.email || null,
-                imageUrl: data.imageUrl || null,
+                message: "Profile updated successfully",
+                user: {
+                    fullName: data.fullName || null,
+                    email: data.email || null,
+                    imageUrl: data.imageUrl || null,
+                    location: data.location || null,
+                    phone: data.phone || null,
+                },
             }),
             { status: 200 }
         );
     } catch (err) {
-        console.error("POST profile image failed:", err);
+        console.error("POST profile update failed:", err);
         return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
     }
 }

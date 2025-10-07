@@ -9,6 +9,7 @@ export async function GET(req) {
         if (!authHeader?.startsWith("Bearer ")) {
             return new Response(JSON.stringify({ success: false, error: "No token provided" }), { status: 401 });
         }
+        console.log(err)
 
         const token = authHeader.split(" ")[1];
         let decoded;
@@ -18,8 +19,8 @@ export async function GET(req) {
             return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
         }
 
-        // Optional: check admin role
-        if (!decoded.isAdmin) {
+        // Check admin role
+        if (!decoded.role || decoded.role !== "admin") {
             return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), { status: 403 });
         }
 

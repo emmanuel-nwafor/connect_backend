@@ -1,9 +1,9 @@
-// /api/admin/user-account-deletion-request/[id]/route.js
+// /api/admin/user-account-deletion-request/[id]/update-status.js
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
-export async function GET(req, { params }) {
+export async function POST(req, { params }) {
     try {
         const authHeader = req.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
@@ -18,21 +18,22 @@ export async function GET(req, { params }) {
             return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
         }
 
-        if (!decoded.isAdmin) {
+        // Check admin role
+        if (!decoded.role || decoded.role !== "admin") {
             return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), { status: 403 });
         }
 
-        const { id } = params;
-        const docRef = doc(db, "deletionRequests", id);
-        const snapshot = await getDoc(docRef);
-
-        if (!snapshot.exists()) {
-            return new Response(JSON.stringify({ success: false, error: "Request not found" }), { status: 404 });
+        const { status } = await req.json();
+        if (!["approved", "rejected"].includes(status)) {
+            return new Response(JSON.stringify({ success: false, error: "Invalid status" }), { status: 400 });
         }
 
-        return new Response(JSON.stringify({ success: true, request: snapshot.data() }), { status: 200 });
+        const docRef = doc(db, "deletionRequests", params.id);
+        await updateDoc(docRef, { status });
+
+        return new Response(JSON.stringify({ success: true, message: "Status updated successfully" }), { status: 200 });
     } catch (err) {
-        console.error("❌ Fetch single deletion request error:", err);
+        console.error("❌ Update deletion request status error:", err);
         return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
     }
 }

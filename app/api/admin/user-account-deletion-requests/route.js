@@ -9,7 +9,6 @@ export async function GET(req) {
         if (!authHeader?.startsWith("Bearer ")) {
             return new Response(JSON.stringify({ success: false, error: "No token provided" }), { status: 401 });
         }
-        console.log(err)
 
         const token = authHeader.split(" ")[1];
         let decoded;

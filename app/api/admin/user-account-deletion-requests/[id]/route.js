@@ -1,4 +1,4 @@
-// /api/admin/user-account-deletion-request/[id]/update-status.js
+// /api/admin/user-account-deletion-request/[id]/route.js
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";

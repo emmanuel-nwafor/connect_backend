@@ -1,3 +1,4 @@
+//  /api/users/notifications/mark-read
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, updateDoc, where } from "firebase/firestore";
 import jwt from "jsonwebtoken";

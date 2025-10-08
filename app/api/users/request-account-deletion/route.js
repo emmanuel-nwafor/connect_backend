@@ -25,11 +25,13 @@ export async function POST(req) {
         }
 
         const userId = decoded.userId;
-        const { reason, password } = await req.json();
 
-        if (!reason || !password) {
+        // Fetch the data from the request body
+        const { fullName, email, reason, password } = await req.json();
+
+        if (!fullName || !email || !reason || !password) {
             return new Response(
-                JSON.stringify({ success: false, error: "Reason and password required" }),
+                JSON.stringify({ success: false, error: "Full name, email, reason and password required" }),
                 { status: 400 }
             );
         }
@@ -40,6 +42,8 @@ export async function POST(req) {
         // Save request to Firestore
         const payload = {
             userId,
+            fullName,
+            email,
             reason,
             password: hashedPassword,
             status: "pending",

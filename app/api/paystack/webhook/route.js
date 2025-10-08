@@ -1,4 +1,3 @@
-// /api/paystack/webhook/route.js
 import { db } from "@/lib/firebase";
 import crypto from "crypto";
 import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
@@ -56,6 +55,7 @@ export async function POST(req) {
                         type: "booking",
                         bookingId,
                         createdAt: serverTimestamp(),
+                        read: false,
                     });
 
                     // User notification
@@ -67,6 +67,7 @@ export async function POST(req) {
                         type: "booking",
                         bookingId,
                         createdAt: serverTimestamp(),
+                        read: false,
                     });
 
                     // Generate JWT token for internal API call

@@ -40,6 +40,7 @@ export async function POST(req) {
         userId: null,
         type: "welcome",
         createdAt: serverTimestamp(),
+        read: false,
       });
 
       // Welcome notification to the user
@@ -50,6 +51,7 @@ export async function POST(req) {
         userId: user.uid,
         type: "welcome",
         createdAt: serverTimestamp(),
+        read: false,
       });
 
     }

@@ -21,6 +21,7 @@
     "next-cloudinary": "^6.16.0",
     "next-connect": "^1.0.0",
     "nodemailer": "^7.0.6",
+    "openai": "^6.3.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native-paper": "^5.14.5",

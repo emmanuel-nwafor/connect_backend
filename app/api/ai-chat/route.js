@@ -8,13 +8,10 @@ export async function POST(req) {
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
-
-    // Limit message length to prevent abuse
     if (message.length > 2000) {
       return NextResponse.json({ error: "Message too long" }, { status: 400 });
     }
 
-    // Extract lodge info safely
     const safeLodge = {
       id: lodge?.id || "N/A",
       title: lodge?.title || "N/A",
@@ -25,16 +22,13 @@ export async function POST(req) {
       status: lodge?.status || "available",
     };
 
-    // System prompt (defines assistant behavior)
     const systemPrompt = `
 You are "Connect Assistant" — a concise, friendly, and professional property assistant.
 You answer user questions about lodges, apartments, lands, or shops using the provided data.
 If the user asks about booking or availability, check the "status" field and respond accordingly.
-If the data isn't provided, respond honestly that you don't have that info, and suggest contacting support or checking listings.
-Be short, clear, and helpful. Never make up fake info.
+Be honest when info is missing. Do not invent details.
 `;
 
-    // Combine lodge data + user message
     const userPrompt = `
 Lodge Data:
 ${JSON.stringify(safeLodge, null, 2)}
@@ -43,28 +37,27 @@ User Question:
 ${message}
 `;
 
-    // Send to OpenAI
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: "llama-3.1-8b-instant",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.2,
-        max_tokens: 250,
+        temperature: 0.3,
+        max_tokens: 300,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("OpenAI Error:", errorText);
-      return NextResponse.json({ error: "AI service error" }, { status: 500 });
+      console.error("Groq Error:", errorText);
+      return NextResponse.json({ error: errorText || "AI service error" }, { status: 500 });
     }
 
     const data = await response.json();

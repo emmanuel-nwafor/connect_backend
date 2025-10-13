@@ -104,7 +104,7 @@ export async function POST(req) {
         ? `<img src="${lodgeData.imageUrls[0]}" alt="Property Image" />`
         : ""
       }
-            <p><b>Property Name:</b> ${lodgeData?.name || "N/A"}</p>
+            <p><b>Property Name:</b> ${lodgeData?.propertyName || "N/A"}</p>
             <p><b>Property Location:</b> ${lodgeData?.location || "N/A"}</p>
           </div>
 

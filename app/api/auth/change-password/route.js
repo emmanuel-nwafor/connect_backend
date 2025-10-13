@@ -1,3 +1,4 @@
+// /api/auth/change-password
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { signInWithEmailAndPassword, updatePassword } from "firebase/auth";

@@ -36,7 +36,7 @@ export async function POST(req) {
       );
     }
 
-    // Add property to "lodges" collection
+    // Add property to "lodges" collection with status
     const docRef = await addDoc(collection(db, 'lodges'), {
       title,
       description,
@@ -50,6 +50,7 @@ export async function POST(req) {
       kitchen: kitchen || false,
       balcony: balcony || false,
       selfContained: selfContained || false,
+      status: 'available', 
       createdAt: serverTimestamp(),
     });
 

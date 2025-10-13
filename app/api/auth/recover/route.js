@@ -28,7 +28,7 @@ export async function POST(req) {
     );
 
     // Reset link (Deep link for your app)
-    const resetLink = `connect://auth/reset-password?token=${token}`;
+    const resetLink = `connect://auth/reset?token=${token}`;
 
     // Send via Nodemailer
     const transporter = nodemailer.createTransport({

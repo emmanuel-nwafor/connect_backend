@@ -67,18 +67,78 @@ export async function POST(req) {
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
-          body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin:0; padding:0; }
-          .container { max-width: 700px; margin: 20px auto; background: #fff; padding: 20px; border-radius: 8px; }
-          .header { text-align: center; padding-bottom: 20px; border-bottom: 2px solid #eee; }
-          .header img { max-width: 160px; }
-          h2 { color: #333; }
-          .details { margin: 20px 0; }
-          .details p { margin: 6px 0; font-size: 14px; }
-          .property { margin: 20px 0; }
-          .property img { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
-          .total { text-align: right; font-size: 16px; font-weight: bold; margin-top: 10px; }
-          .footer { text-align: center; font-size: 12px; color: #777; margin-top: 20px; padding-top: 10px; border-top: 1px solid #eee; }
+          body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            color: #333;
+          }
+          .container {
+            max-width: 700px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          }
+          .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+          }
+          .header img {
+            max-width: 160px;
+            margin-bottom: 8px;
+          }
+          h2 {
+            font-weight: 600;
+            color: #222;
+            margin: 10px 0;
+          }
+          h3 {
+            font-weight: 500;
+            color: #333;
+            margin-top: 20px;
+          }
+          p {
+            margin: 6px 0;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          .details {
+            margin: 20px 0;
+          }
+          .details p {
+            font-size: 14px;
+          }
+          .property {
+            margin: 20px 0;
+          }
+          .property img {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 10px;
+          }
+          .total {
+            text-align: right;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 10px;
+            color: #111;
+          }
+          .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+          }
         </style>
       </head>
       <body>
@@ -100,11 +160,11 @@ export async function POST(req) {
 
           <div class="property">
             <h3>Property Booked</h3>
-            ${lodgeData?.imageUrls?.length
-        ? `<img src="${lodgeData.imageUrls[0]}" alt="Property Image" />`
-        : ""
-      }
-            <p><b>Property Name:</b> ${lodgeData.propertyName || "N/A"}</p>
+            ${
+              lodgeData?.imageUrls?.length
+                ? `<img src="${lodgeData.imageUrls[0]}" alt="Property Image" />`
+                : ""
+            }
             <p><b>Property Location:</b> ${lodgeData?.location || "N/A"}</p>
           </div>
 

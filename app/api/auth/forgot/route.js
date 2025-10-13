@@ -1,1 +1,8 @@
-// Create this backend file for me for users to retrieve their password from firebase.
+// /api/auth/recover-password
+export async function GET(){
+    try {
+        
+    } catch (error) {
+        
+    }
+}

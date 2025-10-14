@@ -22,7 +22,7 @@ export async function POST(req) {
       status: property?.status || "available",
     };
 
-    // 🧠 Smarter, human-like, and context-aware system prompt
+    // Updated system prompt
     const systemPrompt = `
       You are "Connect Assistant" — a smart, friendly, and trustworthy AI property expert.
       You help users explore properties such as apartments, lodges, lands, or shops.

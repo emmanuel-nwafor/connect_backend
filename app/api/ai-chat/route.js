@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req) {
   try {
-    const { message, lodge } = await req.json();
+    const { message, property } = await req.json();
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
@@ -12,30 +12,47 @@ export async function POST(req) {
       return NextResponse.json({ error: "Message too long" }, { status: 400 });
     }
 
-    const safeLodge = {
-      id: lodge?.id || "N/A",
-      title: lodge?.title || "N/A",
-      rentFee: lodge?.rentFee || "N/A",
-      category: lodge?.category || "N/A",
-      location: lodge?.location || "N/A",
-      description: lodge?.description ? lodge.description.slice(0, 800) : "",
-      status: lodge?.status || "available",
+    const safeProperty = {
+      id: property?.id || "N/A",
+      title: property?.title || "N/A",
+      rentFee: property?.rentFee || "N/A",
+      category: property?.category || "N/A",
+      location: property?.location || "N/A",
+      description: property?.description ? property.description.slice(0, 800) : "",
+      status: property?.status || "available",
     };
 
+    // 🧠 Smarter, human-like, and context-aware system prompt
     const systemPrompt = `
-You are "Connect Assistant" — a concise, friendly, and professional property assistant.
-You answer user questions about lodges, apartments, lands, or shops using the provided data.
-If the user asks about booking or availability, check the "status" field and respond accordingly.
-Be honest when info is missing. Do not invent details.
-`;
+      You are "Connect Assistant" — a smart, friendly, and trustworthy AI property expert.
+      You help users explore properties such as apartments, lodges, lands, or shops.
+      Always sound natural, warm, and confident — never robotic.
+
+      When responding:
+      - Use the provided property data to give accurate and helpful answers.
+      - Make the property sound appealing and interesting without overhyping.
+      - If asked about booking or availability, check the "status" field.
+      - If the property is available, gently encourage them to book or request more info.
+      - If unavailable, kindly suggest exploring other listings.
+      - If the user asks about **booking security or data protection**, confidently assure them that:
+        "Our booking process is fully secured, private, and handled with advanced safety measures to protect your data."
+      - If users ask about **how to contact admins**, tell them:
+        "You can contact the admins directly through the messages or chats tab in the app."
+      - Be honest when information is missing — never make up details.
+      - Keep answers short, elegant, and engaging — as if chatting with a potential renter or buyer.
+      - You can sprinkle light excitement when describing properties, e.g.,
+        “That’s a great location!” or “This one definitely stands out.”
+
+      Your main goal: help users feel confident, safe, and excited while exploring properties.
+    `;
 
     const userPrompt = `
-Lodge Data:
-${JSON.stringify(safeLodge, null, 2)}
+      Property Data:
+         ${JSON.stringify(safeProperty, null, 2)}
 
-User Question:
-${message}
-`;
+      User Question:
+          ${message}
+    `;
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -49,8 +66,8 @@ ${message}
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.3,
-        max_tokens: 300,
+        temperature: 0.5,
+        max_tokens: 400,
       }),
     });
 

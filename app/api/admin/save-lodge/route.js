@@ -38,7 +38,7 @@ export async function POST(req) {
     }
 
     const userData = userSnap.data();
-    const userRole = userData.role; 
+    const userRole = userData.role; // should be "admin"
 
     if (userRole !== "admin") {
       return new Response(

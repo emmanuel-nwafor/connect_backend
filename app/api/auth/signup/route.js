@@ -1,28 +1,24 @@
-import { auth, createUserWithEmailAndPassword, db, googleProvider, signInWithPopup } from '@/lib/firebase';
+import { auth, createUserWithEmailAndPassword, db } from '@/lib/firebase';
 import { addDoc, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
   try {
-    const { email, password, isGoogle = false } = await req.json();
+    const { email, password } = await req.json();
 
-    if (!email || (!isGoogle && !password)) {
+    if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    // Create user with Firebase Auth
-    let userCredential;
-    if (isGoogle) {
-      userCredential = await signInWithPopup(auth, googleProvider);
-    } else {
-      userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    }
-
+    // Create user with Firebase Auth (Email + Password)
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+
+    // Assign role (admin or user)
     const role = email === 'echinecherem729@gmail.com' ? 'admin' : 'user';
 
-    // Firestore user doc
+    // Create user document in Firestore
     await setDoc(doc(db, 'users', user.uid), {
       email: user.email,
       role,
@@ -30,30 +26,29 @@ export async function POST(req) {
       createdAt: new Date().toISOString(),
     });
 
-    // Push notifications
+    // Send notifications
     if (role === 'user') {
       // Notify admins
-      await addDoc(collection(db, "notifications"), {
-        title: "New User Signup",
+      await addDoc(collection(db, 'notifications'), {
+        title: 'New User Signup',
         message: `${email} just signed up.`,
-        role: "admin",
+        role: 'admin',
         userId: null,
-        type: "welcome",
+        type: 'welcome',
         createdAt: serverTimestamp(),
         read: false,
       });
 
       // Welcome notification to the user
-      await addDoc(collection(db, "notifications"), {
-        title: "Welcome!",
+      await addDoc(collection(db, 'notifications'), {
+        title: 'Welcome!',
         message: `Welcome to the app, ${email}!`,
-        role: "user",
+        role: 'user',
         userId: user.uid,
-        type: "welcome",
+        type: 'welcome',
         createdAt: serverTimestamp(),
         read: false,
       });
-
     }
 
     // Sign JWT
@@ -68,7 +63,7 @@ export async function POST(req) {
       uid: user.uid,
       email: user.email,
       token,
-      redirect: '/setup'
+      redirect: '/setup',
     }, { status: 201 });
 
   } catch (error) {

@@ -72,6 +72,8 @@ export async function POST(req) {
 
     await addDoc(collection(db, "withdrawals"), {
       userId,
+      name: user.fullName || "Unknown",
+      email: user.email || "Unknown",
       accountNumber,
       bankName,
       amount,

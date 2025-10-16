@@ -93,7 +93,8 @@ export async function POST(req) {
     // --- OPTIONAL NOTIFICATION ---
     await addDoc(collection(db, "notifications"), {
       title: "Referral Bonus 🎉",
-      message: `${userData.email || "A user"} joined using your referral code!`,
+      message: `${userData.fullName || "A user"} joined using your referral code!`,
+      imageUrl: userData.imageUrl || null,
       userId: referrerDoc.id,
       type: "referral",
       createdAt: serverTimestamp(),

@@ -24,8 +24,8 @@ export async function POST(req) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.userId;
 
-    const { accountNumber, accountName, bankName } = await req.json();
-    if (!accountNumber || !bankName || !accountName) {
+    const { accountNumber, bankName } = await req.json();
+    if (!accountNumber || !bankName) {
       return NextResponse.json({ success: false, message: "Missing account details" }, { status: 400 });
     }
 
@@ -73,7 +73,6 @@ export async function POST(req) {
     await addDoc(collection(db, "withdrawals"), {
       userId,
       accountNumber,
-      accountName,
       bankName,
       amount,
       pointsUsed: totalPoints,

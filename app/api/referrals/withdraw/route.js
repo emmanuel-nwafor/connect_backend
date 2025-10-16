@@ -8,13 +8,13 @@ import {
   getDocs,
   query,
   where,
+  serverTimestamp,
 } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
   try {
-    // --- AUTH CHECK ---
     const authHeader = req.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
@@ -29,7 +29,6 @@ export async function POST(req) {
       return NextResponse.json({ success: false, message: "Missing account details" }, { status: 400 });
     }
 
-    // --- FETCH USER ---
     const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
     if (!userSnap.exists()) {
@@ -39,9 +38,7 @@ export async function POST(req) {
     const user = userSnap.data();
     const MIN_POINTS = 200;
     const POINT_TO_NAIRA = 10;
-    // const MIN_DAYS = 3; 
 
-    // --- CHECK IF USER ELIGIBLE ---
     if ((user.points || 0) < MIN_POINTS) {
       return NextResponse.json({
         success: false,
@@ -49,20 +46,17 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    // --- CHECK IF USER ALREADY WITHDREW TODAY ---
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
     const withdrawalQuery = query(
       collection(db, "withdrawals"),
       where("userId", "==", userId)
     );
     const withdrawalsSnap = await getDocs(withdrawalQuery);
 
+    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+    const endOfDay = new Date(); endOfDay.setHours(23,59,59,999);
+
     const withdrewToday = withdrawalsSnap.docs.some(doc => {
-      const createdAt = new Date(doc.data().createdAt);
+      const createdAt = doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt);
       return createdAt >= startOfDay && createdAt <= endOfDay;
     });
 
@@ -73,22 +67,9 @@ export async function POST(req) {
       }, { status: 400 });
     }
 
-    // --- CHECK HOW LONG USER HAS BEEN ACTIVE ---
-    // const joinedAt = new Date(user.createdAt || Date.now());
-    // const daysActive = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
-
-    // if (daysActive < MIN_DAYS) {
-    //   return NextResponse.json({
-    //     success: false,
-    //     message: `You must use the app for at least ${MIN_DAYS} days before you can withdraw.`,
-    //   }, { status: 400 });
-    // }
-
-    // --- CALCULATE AMOUNT ---
     const totalPoints = user.points || 0;
-    const amount = (totalPoints / POINT_TO_NAIRA) * 100; // Example: 10 points = ₦100
+    const amount = totalPoints * POINT_TO_NAIRA;
 
-    // --- CREATE WITHDRAWAL RECORD ---
     await addDoc(collection(db, "withdrawals"), {
       userId,
       accountNumber,
@@ -96,17 +77,16 @@ export async function POST(req) {
       amount,
       pointsUsed: totalPoints,
       status: "pending",
-      createdAt: new Date().toISOString(),
+      createdAt: serverTimestamp(),
     });
 
-    // --- RESET USER STATS ---
     await setDoc(
       userRef,
       {
         earnings: 0,
         points: 0,
-        lastWithdrawalAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        lastWithdrawalAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
@@ -117,9 +97,9 @@ export async function POST(req) {
     });
   } catch (err) {
     console.error("Withdrawal error:", err);
-    return NextResponse.json({
-      success: false,
-      message: "Internal server error",
-    }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

@@ -5,19 +5,13 @@ import { NextResponse } from "next/server";
 
 export async function GET(req) {
   try {
-    // --- AUTH VALIDATION ---
     const authHeader = req.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // --- ROLE CHECK (ADMIN ONLY) ---
     if (decoded.role !== "admin") {
       return NextResponse.json(
         { success: false, message: "Access denied. Admins only." },
@@ -25,7 +19,6 @@ export async function GET(req) {
       );
     }
 
-    // --- FETCH WITHDRAWAL REQUESTS ---
     const withdrawalsQuery = query(
       collection(db, "withdrawals"),
       orderBy("createdAt", "desc")
@@ -42,7 +35,6 @@ export async function GET(req) {
 
     const withdrawals = [];
 
-    // --- MAP WITH USER DETAILS ---
     for (const docSnap of withdrawalsSnap.docs) {
       const withdrawal = docSnap.data();
       const userRef = doc(db, "users", withdrawal.userId);
@@ -51,7 +43,7 @@ export async function GET(req) {
       const user = userSnap.exists()
         ? {
             id: userSnap.id,
-            name: userSnap.data().name || null,
+            name: userSnap.data().name || "Unknown",
             email: userSnap.data().email || null,
             referralCode: userSnap.data().referralCode || null,
           }
@@ -60,11 +52,12 @@ export async function GET(req) {
       withdrawals.push({
         id: docSnap.id,
         ...withdrawal,
-        user,
+        userName: user?.name || "Unknown",
+        userEmail: user?.email || "N/A",
+        createdAt: withdrawal.createdAt || null,
       });
     }
 
-    // --- SUMMARY ---
     const summary = {
       totalRequests: withdrawals.length,
       pending: withdrawals.filter((w) => w.status === "pending").length,
@@ -73,19 +66,9 @@ export async function GET(req) {
       totalAmount: withdrawals.reduce((acc, w) => acc + (w.amount || 0), 0),
     };
 
-    return NextResponse.json({
-      success: true,
-      summary,
-      withdrawals,
-    });
+    return NextResponse.json({ success: true, summary, withdrawals });
   } catch (err) {
     console.error("Admin withdrawal requests error:", err);
-    if (err.name === "JsonWebTokenError") {
-      return NextResponse.json(
-        { success: false, message: "Invalid or expired token" },
-        { status: 401 }
-      );
-    }
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 }

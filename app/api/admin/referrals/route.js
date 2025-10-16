@@ -52,26 +52,19 @@ export async function GET(req) {
       );
 
       referralData.push({
-        userId: user.id,
-        name: user.name,
+        id: user.id,
         email: user.email,
         referralCode: user.referralCode,
         referredBy: user.referredBy
-          ? users.find((u) => u.referralCode === user.referredBy)?.name || null
+          ? users.find((u) => u.referralCode === user.referredBy)?.name || user.referredBy
           : null,
-        referredByEmail: user.referredBy
-          ? users.find((u) => u.referralCode === user.referredBy)?.email || null
-          : null,
-        totalReferrals: referredList.length,
         referredUsers: referredList.map((r) => ({
           id: r.id,
-          name: r.name,
           email: r.email,
           referralCode: r.referralCode,
         })),
         points: user.points,
         earnings: user.earnings,
-        createdAt: user.createdAt,
       });
     }
 
@@ -91,7 +84,7 @@ export async function GET(req) {
 
     // --- SUMMARY ---
     const totalReferrals = referralData.reduce(
-      (acc, u) => acc + u.totalReferrals,
+      (acc, u) => acc + (u.referredUsers?.length || 0),
       0
     );
     const totalEarnings = referralData.reduce(
@@ -101,12 +94,12 @@ export async function GET(req) {
 
     return NextResponse.json({
       success: true,
+      data: { users: referralData },
       summary: {
         totalUsers: users.length,
         totalReferrals,
         totalEarnings,
       },
-      data: referralData,
       logs,
     });
   } catch (err) {

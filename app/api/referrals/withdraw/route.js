@@ -39,7 +39,7 @@ export async function POST(req) {
     const user = userSnap.data();
     const MIN_POINTS = 200;
     const POINT_TO_NAIRA = 10;
-    const MIN_DAYS = 3; 
+    // const MIN_DAYS = 3; 
 
     // --- CHECK IF USER ELIGIBLE ---
     if ((user.points || 0) < MIN_POINTS) {
@@ -74,15 +74,15 @@ export async function POST(req) {
     }
 
     // --- CHECK HOW LONG USER HAS BEEN ACTIVE ---
-    const joinedAt = new Date(user.createdAt || Date.now());
-    const daysActive = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
+    // const joinedAt = new Date(user.createdAt || Date.now());
+    // const daysActive = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (daysActive < MIN_DAYS) {
-      return NextResponse.json({
-        success: false,
-        message: `You must use the app for at least ${MIN_DAYS} days before you can withdraw.`,
-      }, { status: 400 });
-    }
+    // if (daysActive < MIN_DAYS) {
+    //   return NextResponse.json({
+    //     success: false,
+    //     message: `You must use the app for at least ${MIN_DAYS} days before you can withdraw.`,
+    //   }, { status: 400 });
+    // }
 
     // --- CALCULATE AMOUNT ---
     const totalPoints = user.points || 0;

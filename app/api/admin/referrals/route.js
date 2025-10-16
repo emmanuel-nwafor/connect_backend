@@ -30,6 +30,7 @@ export async function GET(req) {
     const users = usersSnap.docs.map((doc) => ({
       id: doc.id,
       name: doc.data().name || null,
+      image: doc.imageUrl,
       email: doc.data().email || null,
       referralCode: doc.data().referralCode || null,
       referredBy: doc.data().referredBy || null,

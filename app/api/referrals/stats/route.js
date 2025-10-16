@@ -58,10 +58,10 @@ export async function GET(req) {
       suspicious = true;
     }
 
-    // const profileCompleted = user.profileCompleted || false;
-    // if (!profileCompleted) {
-    //   console.warn(`User ${userId} has not completed profile yet.`);
-    // }
+    const profileCompleted = user.profileCompleted || false;
+    if (!profileCompleted) {
+      console.warn(`User ${userId} has not completed profile yet.`);
+    }
 
     // Response
     return NextResponse.json({

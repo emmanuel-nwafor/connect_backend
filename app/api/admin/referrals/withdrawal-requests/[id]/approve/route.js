@@ -128,9 +128,9 @@ export async function POST(req, { params }) {
         </div>
 
         <div class="content">
-          <p>Hello <b>${userData.name || userData.email || "User"}</b>,</p>
+          <p>Hello <b>${withdrawal.name || withdrawal.email || "User"}</b>,</p>
 
-          <p>Great news! Your withdrawal request of <b>₦${amount?.toLocaleString() || "N/A"}</b> has been approved and processed successfully.</p>
+          <p>Great news! Your withdrawal request of <b>₦${withdrawal.amount?.toLocaleString()}</b> has been approved and processed successfully.</p>
 
           <p>You should receive the funds in your bank account shortly. If you do not see the payment within 24 hours, please contact our support team.</p>
 

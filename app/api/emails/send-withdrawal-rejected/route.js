@@ -1,3 +1,4 @@
+// /api/emaills/send-withdrawal-rejected
 import { db } from "@/lib/firebase";
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
 import jwt from "jsonwebtoken";

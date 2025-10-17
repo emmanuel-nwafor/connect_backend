@@ -133,7 +133,7 @@ export async function POST(req, { params }) {
         <div class="content">
           <p>Hello <b>${withdrawal.name || withdrawal.email || "User"}</b>,</p>
 
-          <p>We regret to inform you that your withdrawal request of <b>₦${amount?.toLocaleString() || "N/A"}</b> has been <b>rejected</b>.</p>
+          <p>We regret to inform you that your withdrawal request</b> has been <b>rejected</b>.</p>
 
           <p><b>Reason:</b> ${reason || "No reason specified"}.</p>
 

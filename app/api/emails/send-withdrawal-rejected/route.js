@@ -7,30 +7,30 @@ export async function POST(req) {
   try {
     console.log("📨 Incoming request to /api/emails/send-withdrawal-rejected");
 
-    const authHeader = req.headers.get("authorization");
+    // const authHeader = req.headers.get("authorization");
     const body = await req.json();
     console.log("📩 Request body:", body);
 
     // --- VERIFY TOKEN ---
-    let decoded = null;
-    if (authHeader?.startsWith("Bearer ")) {
-      try {
-        const token = authHeader.split(" ")[1];
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("Token verified:", decoded);
-      } catch (err) {
-        console.warn("Invalid token:", err.message);
-        return new Response(
-          JSON.stringify({ success: false, message: "Invalid token" }),
-          { status: 401 }
-        );
-      }
-    } else {
-      return new Response(
-        JSON.stringify({ success: false, message: "Missing authorization" }),
-        { status: 401 }
-      );
-    }
+    // let decoded = null;
+    // if (authHeader?.startsWith("Bearer ")) {
+    //   try {
+    //     const token = authHeader.split(" ")[1];
+    //     decoded = jwt.verify(token, process.env.JWT_SECRET);
+    //     console.log("Token verified:", decoded);
+    //   } catch (err) {
+    //     console.warn("Invalid token:", err.message);
+    //     return new Response(
+    //       JSON.stringify({ success: false, message: "Invalid token" }),
+    //       { status: 401 }
+    //     );
+    //   }
+    // } else {
+    //   return new Response(
+    //     JSON.stringify({ success: false, message: "Missing authorization" }),
+    //     { status: 401 }
+    //   );
+    // }
 
     const { userId, email, reason } = body;
     if (!userId && !email) {

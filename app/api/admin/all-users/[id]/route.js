@@ -2,23 +2,21 @@
 import { db } from "@/lib/firebase";
 import { deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
 import { NextResponse } from "next/server";
-
-// Email transporter
-const transporter = nodemailer.createTransporter({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-const EMAIL_FROM = process.env.EMAIL_FROM;
 
 // Send email function
 async function sendEmail(to, subject, text) {
   try {
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.createTransporter({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const EMAIL_FROM = process.env.EMAIL_FROM;
     await transporter.sendMail({
       from: EMAIL_FROM,
       to,

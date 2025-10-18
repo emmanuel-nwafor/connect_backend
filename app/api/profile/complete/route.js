@@ -33,6 +33,7 @@ export async function GET(req) {
       success: true,
       profileCompleted: !!userData.profileCompleted,
       role: userData.role || "user",
+      status: userData.status,
     });
   } catch (err) {
     console.error("GET profile check error:", err);

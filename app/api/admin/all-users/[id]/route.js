@@ -1,30 +1,43 @@
-// /api/admin/all-users/[id]/route.js
 import { db } from "@/lib/firebase";
 import { deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 
-// Send email function
-async function sendEmail(to, subject, text) {
-  try {
-    const nodemailer = await import("nodemailer");
-    const transporter = nodemailer.createTransporter({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+// Import nodemailer
+import nodemailer from "nodemailer";
 
-    const EMAIL_FROM = process.env.EMAIL_FROM;
+// Create reusable transporter
+const transporter = nodemailer.createTransport({
+  service: "gmail", // or any SMTP provider
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+// Email sender function with HTML template
+async function sendEmail(to, subject, message) {
+  const htmlTemplate = `
+    <div style="font-family: Poppins, sans-serif; color: #333;">
+      <div style="text-align:center; margin-bottom:20px;">
+        <img src="https://res.cloudinary.com/dbczfoqnc/image/upload/v1757033773/connect-image-logo_obunnv.png" alt="App Logo" width="100" />
+      </div>
+      <h2 style="text-align:center; color:#007AFF;">${subject}</h2>
+      <p style="text-align:center; font-size:16px;">${message}</p>
+      <p style="text-align:center; font-size:14px; color:#666;">If you have questions, please contact our support team.</p>
+    </div>
+  `;
+
+  try {
     await transporter.sendMail({
-      from: EMAIL_FROM,
+      from: process.env.EMAIL_FROM,
       to,
       subject,
-      text,
+      text: message, // fallback text
+      html: htmlTemplate,
     });
-  } catch (error) {
-    console.error("Email send error:", error);
+  } catch (err) {
+    console.error("❌ Email send error:", err);
   }
 }
 
@@ -50,90 +63,29 @@ async function authenticate(req) {
   }
 }
 
-// GET user
-export async function GET(req, { params }) {
-  try {
-    const auth = await authenticate(req);
-    if (auth.error) {
-      return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
-    }
-
-    const { id } = params;
-    if (!id || typeof id !== "string") {
-      return NextResponse.json({ success: false, message: "Invalid user ID" }, { status: 400 });
-    }
-
-    const userRef = doc(db, "users", id);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
-    }
-
-    const userData = userSnap.data();
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        id,
-        fullName: userData.fullName || null,
-        imageUrl: userData.imageUrl || null,
-        role: userData.role || "user",
-        location: userData.location || null,
-        email: userData.email || null,
-        phone: userData.phone || null,
-        profileCompleted: userData.profileCompleted || false,
-        status: userData.status || "active",
-        createdAt: userData.createdAt?.toDate?.()?.toISOString?.() || null,
-        updatedAt: userData.updatedAt?.toDate?.()?.toISOString?.() || null,
-      }
-    }, { status: 200 });
-  } catch (error) {
-    console.error("❌ Error fetching user:", error);
-    return NextResponse.json({ success: false, message: "Internal Server Error" }, { status: 500 });
-  }
-}
-
 // DELETE user
 export async function DELETE(req, { params }) {
   try {
     const auth = await authenticate(req);
-    if (auth.error) {
-      return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
-    }
+    if (auth.error) return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
 
     const { id } = params;
-    if (!id || typeof id !== "string") {
-      return NextResponse.json({ success: false, message: "Invalid user ID" }, { status: 400 });
-    }
+    if (!id || typeof id !== "string") return NextResponse.json({ success: false, message: "Invalid user ID" }, { status: 400 });
 
     const userRef = doc(db, "users", id);
     const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
-    }
+    if (!userSnap.exists()) return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
 
     const userData = userSnap.data();
-    const email = userData.email;
-
-    // Prevent admins from deleting admins
     if (userData.role === "admin" && auth.decoded.role !== "super-admin") {
-      return NextResponse.json(
-        { success: false, message: "Only super-admins can delete admins" },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, message: "Only super-admins can delete admins" }, { status: 403 });
     }
 
     await deleteDoc(userRef);
 
     // Send deletion email
-    if (email) {
-      await sendEmail(
-        email,
-        "Account Deleted",
-        "Your account has been deleted by an administrator."
-      );
+    if (userData.email) {
+      await sendEmail(userData.email, "Account Deleted", "Your account has been deleted by an administrator.");
     }
 
     return NextResponse.json({ success: true, message: "User deleted successfully" }, { status: 200 });
@@ -147,57 +99,32 @@ export async function DELETE(req, { params }) {
 export async function PATCH(req, { params }) {
   try {
     const auth = await authenticate(req);
-    if (auth.error) {
-      return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
-    }
+    if (auth.error) return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
 
     const { id } = params;
-    if (!id || typeof id !== "string") {
-      return NextResponse.json({ success: false, message: "Invalid user ID" }, { status: 400 });
-    }
+    if (!id || typeof id !== "string") return NextResponse.json({ success: false, message: "Invalid user ID" }, { status: 400 });
 
     const body = await req.json();
     const { status } = body;
-
-    if (!["active", "suspended"].includes(status)) {
-      return NextResponse.json({ success: false, message: "Invalid status" }, { status: 400 });
-    }
+    if (!["active", "suspended"].includes(status)) return NextResponse.json({ success: false, message: "Invalid status" }, { status: 400 });
 
     const userRef = doc(db, "users", id);
     const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
-    }
+    if (!userSnap.exists()) return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
 
     const userData = userSnap.data();
-    const previousStatus = userData.status || "active";
-    const email = userData.email;
-
-    // Prevent admins from suspending admins unless super-admin
     if (userData.role === "admin" && auth.decoded.role !== "super-admin") {
-      return NextResponse.json(
-        { success: false, message: "Only super-admins can suspend admins" },
-        { status: 403 }
-      );
+      return NextResponse.json({ success: false, message: "Only super-admins can suspend admins" }, { status: 403 });
     }
 
+    const previousStatus = userData.status || "active";
     await updateDoc(userRef, { status });
 
-    // Send email based on status change
-    if (email) {
+    if (userData.email) {
       if (status === "suspended" && previousStatus === "active") {
-        await sendEmail(
-          email,
-          "Account Suspended",
-          "Your account has been suspended by an administrator."
-        );
+        await sendEmail(userData.email, "Account Suspended", "Your account has been suspended by an administrator.");
       } else if (status === "active" && previousStatus === "suspended") {
-        await sendEmail(
-          email,
-          "Account Unsuspended",
-          "Your account has been unsuspended by an administrator."
-        );
+        await sendEmail(userData.email, "Account Unsuspended", "Your account has been unsuspended by an administrator.");
       }
     }
 

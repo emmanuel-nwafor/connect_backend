@@ -63,6 +63,51 @@ async function authenticate(req) {
   }
 }
 
+// GET user
+export async function GET(req, { params }) {
+  try {
+    const auth = await authenticate(req);
+    if (auth.error) {
+      return NextResponse.json({ success: false, message: auth.error }, { status: auth.status });
+    }
+
+    const { id } = params;
+    if (!id || typeof id !== "string") {
+      return NextResponse.json({ success: false, message: "Invalid user ID" }, { status: 400 });
+    }
+
+    const userRef = doc(db, "users", id);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
+    }
+
+    const userData = userSnap.data();
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        id,
+        fullName: userData.fullName || null,
+        imageUrl: userData.imageUrl || null,
+        role: userData.role || "user",
+        location: userData.location || null,
+        email: userData.email || null,
+        phone: userData.phone || null,
+        profileCompleted: userData.profileCompleted || false,
+        status: userData.status || "active",
+        createdAt: userData.createdAt?.toDate?.()?.toISOString?.() || null,
+        updatedAt: userData.updatedAt?.toDate?.()?.toISOString?.() || null,
+      }
+    }, { status: 200 });
+  } catch (error) {
+    console.error("❌ Error fetching user:", error);
+    return NextResponse.json({ success: false, message: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+
 // DELETE user
 export async function DELETE(req, { params }) {
   try {

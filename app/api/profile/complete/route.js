@@ -1,9 +1,10 @@
+// /api/profile/complete
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 
-// Handle GET — just check completion
+// Handle GET — check completion and include role
 export async function GET(req) {
   try {
     const authHeader = req.headers.get("authorization");
@@ -27,9 +28,11 @@ export async function GET(req) {
     }
 
     const userData = userSnap.data();
+
     return NextResponse.json({
       success: true,
       profileCompleted: !!userData.profileCompleted,
+      role: userData.role || "user",
     });
   } catch (err) {
     console.error("GET profile check error:", err);

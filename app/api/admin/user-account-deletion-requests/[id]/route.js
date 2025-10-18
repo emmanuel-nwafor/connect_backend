@@ -1,176 +1,167 @@
 // /api/admin/user-account-deletion-request/[id]/route.js
-import { db, auth } from "@/lib/firebase";
+
+import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
-import { deleteUser } from "firebase/auth";
+import { getAuth } from "firebase-admin/auth";
 import jwt from "jsonwebtoken";
+
+// --- Email sending setup ---
 import nodemailer from "nodemailer";
-import { NextResponse } from "next/server";
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 export async function POST(req, { params }) {
   try {
-    const { id } = params;
     const authHeader = req.headers.get("authorization");
-
     if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+      return new Response(JSON.stringify({ success: false, error: "No token provided" }), { status: 401 });
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    if (decoded.role !== "admin") {
-      return NextResponse.json({ success: false, message: "Access denied. Admins only." }, { status: 403 });
-    }
-
-    const requestRef = doc(db, "deletionRequests", id);
-    const requestSnap = await getDoc(requestRef);
-
-    if (!requestSnap.exists()) {
-      return NextResponse.json({ success: false, message: "Request not found." }, { status: 404 });
-    }
-
-    const requestData = requestSnap.data();
-    const { status: currentStatus, userId, email, fullName } = requestData;
-
-    let body;
+    let decoded;
     try {
-      body = await req.json();
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch {
-      return NextResponse.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
+      return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
     }
 
-    const { status } = body;
+    if (!decoded.role || decoded.role !== "admin") {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), { status: 403 });
+    }
+
+    // Parse request body
+    const { status } = await req.json();
     if (!["approved", "rejected"].includes(status)) {
-      return NextResponse.json({ success: false, message: "Invalid status" }, { status: 400 });
+      return new Response(JSON.stringify({ success: false, error: "Invalid status" }), { status: 400 });
     }
 
-    if (currentStatus === status) {
-      return NextResponse.json({ success: false, message: `Request already ${status}.` }, { status: 400 });
+    const { id } = params;
+    const docRef = doc(db, "deletionRequests", id);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      return new Response(JSON.stringify({ success: false, error: "Request not found" }), { status: 404 });
     }
 
-    // --- UPDATE REQUEST STATUS ---
-    await updateDoc(requestRef, {
-      status,
-      reviewedBy: decoded.id || "admin",
-      reviewedAt: new Date(),
-    });
+    const requestData = docSnap.data();
+    const userEmail = requestData.email;
+    const userId = requestData.userId;
 
-    // --- SEND EMAIL ---
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    // Update status first
+    await updateDoc(docRef, { status });
+
+    // Handle Approved Request
+    if (status === "approved") {
+      try {
+        // Delete user from Firebase Auth
+        const auth = getAuth();
+        await auth.deleteUser(userId);
+
+        // Delete user's Firestore document
+        const userDocRef = doc(db, "users", userId);
+        await deleteDoc(userDocRef);
+
+        // Optionally delete related collections (bookings, etc.) if needed
+
+      } catch (deleteErr) {
+        console.error("🔥 Error deleting user from Firebase:", deleteErr);
+      }
+    }
+
+    // --- Email Notification ---
+    const emailSubject =
+      status === "approved"
+        ? "Account Deletion Approved"
+        : "Account Deletion Request Rejected";
 
     const emailTemplate = `
       <!DOCTYPE html>
       <html lang="en">
       <head>
-      <meta charset="UTF-8">
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          background-color: #f4f4f4;
-          margin: 0;
-          padding: 0;
-          color: #333;
-        }
-        .container {
-          max-width: 700px;
-          margin: 30px auto;
-          background: #ffffff;
-          padding: 30px 25px;
-          border-radius: 10px;
-        }
-        .header {
-          text-align: center;
-          border-bottom: 2px solid #eee;
-          padding-bottom: 20px;
-        }
-        .content {
-          margin-top: 25px;
-          font-size: 15px;
-          line-height: 1.7;
-        }
-        .content p {
-          margin: 12px 0;
-        }
-        .cta {
-          text-align: center;
-          margin-top: 35px;
-        }
-        .cta a {
-          background-color: ${status === "approved" ? "#EF5350" : "#42A5F5"};
-          color: white;
-          padding: 12px 28px;
-          border-radius: 6px;
-          text-decoration: none;
-          font-weight: bold;
-          font-size: 15px;
-          display: inline-block;
-        }
-        .footer {
-          text-align: center;
-          font-size: 12px;
-          color: #777;
-          margin-top: 35px;
-          padding-top: 15px;
-          border-top: 1px solid #eee;
-        }
-      </style>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <style>
+          body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            color: #333;
+          }
+          .container {
+            max-width: 700px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          }
+          h2 {
+            font-weight: 600;
+            color: #222;
+          }
+          p {
+            margin: 8px 0;
+            font-size: 15px;
+          }
+          .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+          }
+        </style>
       </head>
       <body>
-      <div class="container">
-        <div class="header">
-          <h2>${status === "approved" ? "Account Deletion Approved" : "Account Deletion Rejected"}</h2>
-        </div>
-        <div class="content">
-          <p>Hello <b>${fullName || "User"}</b>,</p>
+        <div class="container">
+          <h2>${emailSubject}</h2>
           ${
             status === "approved"
-              ? `<p>Your account deletion request has been <b>approved</b>. All your data has been permanently removed.</p>`
-              : `<p>Your account deletion request has been <b>rejected</b>. You can continue using your account normally.</p>`
+              ? `
+            <p>Hello,</p>
+            <p>Your account deletion request has been <strong>approved</strong>.</p>
+            <p>All your data and account information have been permanently removed from our system.</p>
+            <p>You can no longer access your account.</p>
+            <p>We’re sorry to see you go, but wish you all the best.</p>
+          `
+              : `
+            <p>Hello,</p>
+            <p>Your account deletion request has been <strong>rejected</strong>.</p>
+            <p>If you believe this was a mistake, please contact our support team.</p>
+          `
           }
-          <p>Regards,<br/>Admin Team</p>
+          <div class="footer">
+            <p>&copy; 2025 CONNECT. All rights reserved.</p>
+          </div>
         </div>
-        <div class="footer">
-          <p>&copy; 2025 Your App. All rights reserved.</p>
-          <p>If you have questions, contact us at <b>support@yourapp.com</b>.</p>
-        </div>
-      </div>
       </body>
       </html>
     `;
 
     await transporter.sendMail({
-      from: `"Admin Team" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: `Account Deletion ${status === "approved" ? "Approved" : "Rejected"}`,
+      from: `"CONNECT Support" <${process.env.EMAIL_USER}>`,
+      to: userEmail,
+      subject: emailSubject,
       html: emailTemplate,
     });
 
-    // --- DELETE USER IF APPROVED ---
-    if (status === "approved") {
-      try {
-        // Remove user from Firebase Auth
-        await deleteUser(await auth.getUser(userId));
-
-        // Remove user from Firestore
-        const userDocRef = doc(db, "users", userId);
-        await deleteDoc(userDocRef);
-      } catch (err) {
-        console.error("Error deleting user data:", err);
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `Request ${status} and email sent successfully.`,
-    });
+    return new Response(
+      JSON.stringify({ success: true, message: "Request handled and user notified successfully" }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
   } catch (err) {
-    console.error("Update deletion request error:", err);
-    return NextResponse.json({ success: false, message: err.message || "Server error" }, { status: 500 });
+    console.error("❌ Update deletion request error:", err);
+    return new Response(
+      JSON.stringify({ success: false, error: err.message || "Server error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }

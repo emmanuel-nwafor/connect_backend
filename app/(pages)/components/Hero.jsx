@@ -1,34 +1,39 @@
-"use client"
+"use client";
 
-import React from 'react';
-import Header from './Header';
+import React from "react";
+import Header from "./Header";
 
 export default function Hero() {
   return (
     <>
-      <Header />
-      <section className="bgflex items-center px-4 overflow-hidden rounded-3xl mx-4 -mt-16 font-poppins">
-        <div className="container mx-auto flex flex-col lg:flex-row items-center justify-center lg:justify-between gap-12 max-w-7xl relative z-10 px-4">
-          <div className="flex-1 text-white text-left max-w-lg">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="flex text-yellow-300">★★★★★</div>
-              <div className="flex -space-x-2 ml-3">
-                <img className="w-7 h-7 rounded-full object-cover" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face" alt="Customer 1" />
-                <img className="w-7 h-7 rounded-full object-cover" src="https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face" alt="Customer 2" />
-                <img className="w-7 h-7 rounded-full object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face" alt="Customer 3" />
-              </div>
-              <span className="text-sm ml-2">Trusted by 5K customers</span>
-            </div>
-            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold mb-6 leading-tight">
-              Your Dream<br />Property is Just a<br />Click Away
-            </h1>
-            <p className="text-lg md:text-xl mb-8 opacity-90">
-              Whether you're buying or selling, we've got you covered. Help find the perfect place to call home.
-            </p>
-            <button className="bg-white text-blue-600 px-8 py-3 rounded-full font-semibold text-lg hover:bg-gray-100 transition">
-              Explore Properties →
-            </button>
-          </div>
+      <section
+        className="relative bg-cover bg-center bg-no-repeat flex items-center p-0 justify-center text-center  h-[100vh] overflow-hidden  mx-4 -mt-16 font-poppins"
+        style={{
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=1400&q=80')",
+        }}
+      >
+        {/* Overlay for dark effect */}
+        <div className="absolute inset-0 bg-black bg-opacity-50 rounded-3xl"></div>
+
+        {/* Content */}
+        <div className="relative z-10 max-w-2xl mx-auto text-white">
+                <Header />
+
+          <h1 className="text-4xl md:text-6xl font-semibold leading-tight">
+            Discover Your Perfect Home
+          </h1>
+          <p className="mt-4 text-lg md:text-xl text-gray-200">
+            Find, connect, and own properties with ease on <span className="font-bold text-blue-400">Connect</span>.
+          </p>
+          <a
+            href="https://connect-realestate.com" // Change this to your desired link
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block mt-8 bg-blue-500 hover:bg-blue-600 transition duration-300 text-white px-8 py-3 rounded-full font-medium"
+          >
+            Explore Properties
+          </a>
         </div>
       </section>
     </>

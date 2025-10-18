@@ -1,3 +1,4 @@
+// /api/users/notifications/delete
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, deleteDoc, doc } from "firebase/firestore";
 import { NextResponse } from "next/server";

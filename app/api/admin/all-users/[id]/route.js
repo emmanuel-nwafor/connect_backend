@@ -16,16 +16,60 @@ const transporter = nodemailer.createTransport({
 });
 
 // Email sender function with HTML template
-async function sendEmail(to, subject, message) {
-  const htmlTemplate = `
-    <div style="font-family: Poppins, sans-serif; color: #333;">
-      <div style="text-align:center; margin-bottom:20px;">
-        <img src="https://res.cloudinary.com/dbczfoqnc/image/upload/v1757033773/connect-image-logo_obunnv.png" alt="App Logo" width="100" />
+async function sendEmail(to, subject, userData, action, reason = "") {
+  let actionText = "";
+  switch (action) {
+    case "suspended":
+      actionText = "temporarily suspended";
+      break;
+    case "unsuspended":
+      actionText = "reinstated";
+      break;
+    case "deleted":
+      actionText = "deleted";
+      break;
+    default:
+      actionText = "";
+  }
+
+  const emailTemplate = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin:0; padding:0; }
+        .container { max-width: 700px; margin: 30px auto; background: #fff; padding: 25px; border-radius: 8px; }
+        .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        .header img { max-width: 150px; margin-bottom: 10px; }
+        h2 { color: #d93025; }
+        p { line-height: 1.6; color: #444; font-size: 15px; }
+        .reason { background: #fce8e6; padding: 12px; border-left: 4px solid #d93025; margin: 15px 0; }
+        .footer { text-align: center; font-size: 12px; color: #777; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <img src="https://res.cloudinary.com/dbczfoqnc/image/upload/v1757032861/Home-studio_logo-removebg-preview_gbq77s.png" alt="Connect Logo">
+          <h2>${subject}</h2>
+        </div>
+
+        <p>Hello <b>${userData.fullName || "User"}</b>,</p>
+
+        <p>Your account on <b>Connect</b> has been <b>${actionText}</b>.</p>
+
+        ${reason ? `<div class="reason"><strong>Reason:</strong> ${reason}</div>` : ""}
+
+        <p>If you believe this was a mistake or would like to appeal, please contact our support team. We will review your case promptly.</p>
+
+        <div class="footer">
+          <p>&copy; 2025 CONNECT. All rights reserved.</p>
+          <p>For support or inquiries, contact <b>support@connect.com</b>.</p>
+        </div>
       </div>
-      <h2 style="text-align:center; color:#007AFF;">${subject}</h2>
-      <p style="text-align:center; font-size:16px;">${message}</p>
-      <p style="text-align:center; font-size:14px; color:#666;">If you have questions, please contact our support team.</p>
-    </div>
+    </body>
+    </html>
   `;
 
   try {
@@ -33,8 +77,8 @@ async function sendEmail(to, subject, message) {
       from: process.env.EMAIL_FROM,
       to,
       subject,
-      text: message, // fallback text
-      html: htmlTemplate,
+      text: `Hello ${userData.fullName || "User"}, your account has been ${actionText}.`, // fallback text
+      html: emailTemplate,
     });
   } catch (err) {
     console.error("❌ Email send error:", err);
@@ -107,7 +151,6 @@ export async function GET(req, { params }) {
   }
 }
 
-
 // DELETE user
 export async function DELETE(req, { params }) {
   try {
@@ -130,7 +173,7 @@ export async function DELETE(req, { params }) {
 
     // Send deletion email
     if (userData.email) {
-      await sendEmail(userData.email, "Account Deleted", "Your account has been deleted by an administrator.");
+      await sendEmail(userData.email, "Account Deleted", userData, "deleted", "Deleted by administrator");
     }
 
     return NextResponse.json({ success: true, message: "User deleted successfully" }, { status: 200 });
@@ -150,7 +193,7 @@ export async function PATCH(req, { params }) {
     if (!id || typeof id !== "string") return NextResponse.json({ success: false, message: "Invalid user ID" }, { status: 400 });
 
     const body = await req.json();
-    const { status } = body;
+    const { status, reason } = body; // Add optional reason field
     if (!["active", "suspended"].includes(status)) return NextResponse.json({ success: false, message: "Invalid status" }, { status: 400 });
 
     const userRef = doc(db, "users", id);
@@ -165,11 +208,12 @@ export async function PATCH(req, { params }) {
     const previousStatus = userData.status || "active";
     await updateDoc(userRef, { status });
 
+    // Send email based on status change
     if (userData.email) {
       if (status === "suspended" && previousStatus === "active") {
-        await sendEmail(userData.email, "Account Suspended", "Your account has been suspended by an administrator.");
+        await sendEmail(userData.email, "Account Suspended", userData, "suspended", reason || "Policy violation or suspicious activity");
       } else if (status === "active" && previousStatus === "suspended") {
-        await sendEmail(userData.email, "Account Unsuspended", "Your account has been unsuspended by an administrator.");
+        await sendEmail(userData.email, "Account Unsuspended", userData, "unsuspended", reason || "Issue resolved");
       }
     }
 

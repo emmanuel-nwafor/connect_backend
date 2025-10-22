@@ -1,4 +1,3 @@
-// /app/api/messages/[chatId]/route.js
 import { db } from "@/lib/firebase";
 import {
   addDoc,
@@ -19,10 +18,7 @@ export async function GET(req, { params }) {
     const { chatId } = params;
 
     if (!chatId || chatId === "undefined" || chatId === "null") {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid chatId" }),
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ success: false, error: "Invalid chatId" }), { status: 400 });
     }
 
     const messagesRef = collection(db, "chats", chatId, "messages");
@@ -35,15 +31,10 @@ export async function GET(req, { params }) {
       createdAt: d.data().createdAt?.toDate?.()?.toISOString?.() || null,
     }));
 
-    return new Response(JSON.stringify({ success: true, messages }), {
-      status: 200,
-    });
+    return new Response(JSON.stringify({ success: true, messages }), { status: 200 });
   } catch (err) {
     console.error("Fetch messages error:", err);
-    return new Response(
-      JSON.stringify({ success: false, error: err.message }),
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }
 }
 
@@ -52,18 +43,12 @@ export async function POST(req, { params }) {
     const { chatId } = params;
 
     if (!chatId || chatId === "undefined" || chatId === "null") {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid chatId" }),
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ success: false, error: "Invalid chatId" }), { status: 400 });
     }
 
     const authHeader = req.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ success: false, error: "No token provided" }),
-        { status: 401 }
-      );
+      return new Response(JSON.stringify({ success: false, error: "No token provided" }), { status: 401 });
     }
 
     const token = authHeader.split(" ")[1];
@@ -71,18 +56,12 @@ export async function POST(req, { params }) {
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid token" }),
-        { status: 401 }
-      );
+      return new Response(JSON.stringify({ success: false, error: "Invalid token" }), { status: 401 });
     }
 
     const { text } = await req.json();
     if (!text || !text.trim()) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Message text required" }),
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ success: false, error: "Message text required" }), { status: 400 });
     }
 
     const senderId = decoded.userId;
@@ -93,7 +72,7 @@ export async function POST(req, { params }) {
     const isFirstMessage = existingMessages.empty;
 
     // Save new message
-    const docRef = await addDoc(messagesRef, {
+    const messageRef = await addDoc(messagesRef, {
       senderId,
       text,
       createdAt: serverTimestamp(),
@@ -107,14 +86,14 @@ export async function POST(req, { params }) {
       lastUpdated: serverTimestamp(),
     });
 
-    // === EMAIL LOGIC (trigger only on first message) ===
+    // === EMAIL + NOTIFICATION LOGIC (first message only) ===
     if (isFirstMessage) {
       const chatSnap = await getDoc(chatRef);
       if (chatSnap.exists()) {
         const chatData = chatSnap.data();
         const participants = chatData?.participants || [];
 
-        // Identify admin (the user this sender is chatting with)
+        // Identify admin the user is chatting with
         const adminId = participants.find((id) => id !== senderId);
 
         if (adminId) {
@@ -124,9 +103,9 @@ export async function POST(req, { params }) {
           if (adminSnap.exists()) {
             const adminData = adminSnap.data();
 
-            // Only send if this user is an admin with an email
             if (adminData?.role === "admin" && adminData?.email) {
               try {
+                // === Send Email to Admin ===
                 const transporter = nodemailer.createTransport({
                   service: "gmail",
                   auth: {
@@ -135,20 +114,43 @@ export async function POST(req, { params }) {
                   },
                 });
 
+                const emailTemplate = `
+                  <html>
+                    <body style="font-family: Poppins, sans-serif; background:#f4f4f4; padding:20px;">
+                      <div style="max-width:600px; margin:auto; background:#fff; border-radius:8px; padding:20px;">
+                        <h2 style="color:#333;">New Chat Message</h2>
+                        <p>You’ve received a new message from a user:</p>
+                        <blockquote style="background:#f9f9f9; padding:10px; border-left:4px solid #007bff;">
+                          ${text}
+                        </blockquote>
+                        <p><a href="${process.env.APP_URL}/admin/chat/${chatId}" style="color:#007bff;">View Chat</a></p>
+                        <p style="font-size:12px; color:#777;">This is an automated message from your app.</p>
+                      </div>
+                    </body>
+                  </html>
+                `;
+
                 await transporter.sendMail({
-                  from: `"Support Chat" <${process.env.EMAIL_USER}>`,
+                  from: process.env.EMAIL_USER,
                   to: adminData.email,
                   subject: "New Chat Message",
-                  html: `
-                    <p>You have a new message from a user.</p>
-                    <p><b>Message:</b> ${text}</p>
-                    <p>Go to app to view message</p>
-                  `,
+                  html: emailTemplate,
                 });
 
-                console.log("Email sent successfully to admin:", adminData.email);
+                console.log("✅ Email sent successfully to admin:", adminData.email);
+
+                // === Save to Notifications Collection ===
+                await addDoc(collection(db, "notifications"), {
+                  title: "New Chat Message",
+                  message: `You received a new message: "${text}"`,
+                  role: "admin",
+                  userId: adminId,
+                  type: "chat",
+                  createdAt: serverTimestamp(),
+                  read: false,
+                });
               } catch (emailErr) {
-                console.error("Email sending error:", emailErr);
+                console.error("❌ Email sending error:", emailErr);
               }
             }
           }
@@ -160,7 +162,7 @@ export async function POST(req, { params }) {
       JSON.stringify({
         success: true,
         message: {
-          id: docRef.id,
+          id: messageRef.id,
           senderId,
           text,
           createdAt: new Date().toISOString(),
@@ -171,9 +173,6 @@ export async function POST(req, { params }) {
     );
   } catch (err) {
     console.error("Send message error:", err);
-    return new Response(
-      JSON.stringify({ success: false, error: err.message }),
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }
 }

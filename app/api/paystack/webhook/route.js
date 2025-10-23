@@ -1,6 +1,6 @@
 import { db } from "@/lib/firebase";
 import crypto from "crypto";
-import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc, setDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
 export async function POST(req) {
@@ -29,13 +29,26 @@ export async function POST(req) {
             if (bookingId && userId) {
                 const bookingRef = doc(db, "users", userId, "bookings", bookingId);
 
-                // Update booking status
+                // Update booking status in user's collection
                 await updateDoc(bookingRef, {
                     status: status === "success" ? "success" : "failed",
                     updatedAt: new Date(),
                     reference,
                 });
-                console.log("✅ Booking updated in Firestore:", bookingId);
+                console.log("✅ Booking updated in user's Firestore:", bookingId);
+
+                // Also update/add to allBookings collection for admin
+                const allBookingsRef = doc(db, "allBookings", bookingId);
+                await setDoc(allBookingsRef, {
+                    bookingId,
+                    userId,
+                    lodgeId,
+                    status: status === "success" ? "success" : "failed",
+                    reference,
+                    createdAt: serverTimestamp(),
+                    updatedAt: new Date(),
+                }, { merge: true }); // merge:true so it updates if already exists
+                console.log("✅ Booking added/updated in allBookings collection:", bookingId);
 
                 // Fetch user info
                 const userRef = doc(db, "users", userId);

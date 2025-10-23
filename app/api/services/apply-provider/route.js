@@ -1,4 +1,4 @@
-// /api/services/apply-provider
+// /api/services/apply-provider/route.js
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import jwt from "jsonwebtoken";
@@ -18,17 +18,19 @@ export async function POST(req) {
         decoded = jwt.verify(token, process.env.JWT_SECRET);
         console.log("✅ Token verified:", decoded);
       } catch (err) {
-        console.warn("⚠️ Token invalid:", err.message);
+        console.warn("❌ Invalid token:", err.message);
       }
     } else {
-      console.log("ℹNo Authorization header found. Continuing without token...");
+      console.log("ℹ No Authorization header found. Continuing without token...");
     }
 
     const { name, email, phone, serviceType, description, isStudent } = body;
 
     if (!name || !email || !phone || !serviceType || !description) {
-      console.warn("❌ Missing required fields");
-      return new Response(JSON.stringify({ success: false, error: "All fields are required" }), { status: 400 });
+      return new Response(
+        JSON.stringify({ success: false, message: "All fields are required" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     // Save to Firestore
@@ -44,13 +46,24 @@ export async function POST(req) {
       updatedAt: serverTimestamp(),
     });
 
-    console.log("User info saved with ID:", docRef.id);
+    console.log("✅ User info saved with ID:", docRef.id);
 
-    return new Response(JSON.stringify({ success: true, message: "Info submitted successfully", id: docRef.id }), {
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "Info submitted successfully",
+        id: docRef.id,
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   } catch (err) {
-    console.error("Submission error:", err);
-    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+    console.error("🔥 Submission error:", err);
+    return new Response(
+      JSON.stringify({ success: false, message: err.message }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }

@@ -1,3 +1,4 @@
+// /api/admin/all-users/route.js
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import jwt from "jsonwebtoken";

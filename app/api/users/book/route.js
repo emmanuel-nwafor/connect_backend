@@ -79,13 +79,13 @@ export async function POST(req) {
         } else if (category === "lands" || category === "others") {
             newStatus = "purchased";
         } else {
-            newStatus = "purchased"; // default for any other category
+            newStatus = "purchased";
         }
 
         // Update lodge status in Firestore
         await updateDoc(lodgeRef, { status: newStatus });
 
-        // Save booking (include user & property info)
+        // Save booking (include user & property info) to user's own collection
         const bookingRef = await addDoc(collection(db, "users", userId, "bookings"), {
             lodgeId,
             amount: numericAmount,
@@ -97,7 +97,23 @@ export async function POST(req) {
             createdAt: serverTimestamp(),
         });
 
-        console.log("Booking saved with property info. ID:", bookingRef.id);
+        console.log("Booking saved in user collection. ID:", bookingRef.id);
+
+        // Save the same booking to 'allBookings' collection for admin access
+        await addDoc(collection(db, "allBookings"), {
+            bookingId: bookingRef.id,
+            userId,
+            userName: userFullName,
+            userEmail,
+            lodgeId,
+            amount: numericAmount,
+            status: "pending",
+            propertyName,
+            propertyImage,
+            createdAt: serverTimestamp(),
+        });
+
+        console.log("Booking also saved in allBookings collection");
 
         // Initialize Paystack transaction
         const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY?.trim();

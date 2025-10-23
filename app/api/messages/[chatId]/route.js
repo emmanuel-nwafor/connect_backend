@@ -93,67 +93,82 @@ export async function POST(req, { params }) {
         const chatData = chatSnap.data();
         const participants = chatData?.participants || [];
 
-        // Identify admin the user is chatting with
+        // Identify the admin (receiver)
         const adminId = participants.find((id) => id !== senderId);
 
         if (adminId) {
           const adminRef = doc(db, "users", adminId);
           const adminSnap = await getDoc(adminRef);
+          const userRef = doc(db, "users", senderId);
+          const userSnap = await getDoc(userRef);
 
-          if (adminSnap.exists()) {
-            const adminData = adminSnap.data();
+          const adminData = adminSnap.exists() ? adminSnap.data() : null;
+          const userData = userSnap.exists() ? userSnap.data() : null;
 
-            if (adminData?.role === "admin" && adminData?.email) {
-              try {
-                // === Send Email to Admin ===
-                const transporter = nodemailer.createTransport({
-                  service: "gmail",
-                  auth: {
-                    user: process.env.EMAIL_USER,
-                    pass: process.env.EMAIL_PASS,
-                  },
-                });
+          // === Send Email to Admin ===
+          if (adminData?.role === "admin" && adminData?.email) {
+            try {
+              const transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: {
+                  user: process.env.EMAIL_USER,
+                  pass: process.env.EMAIL_PASS,
+                },
+              });
 
-                const emailTemplate = `
-                  <html>
-                    <body style="font-family: Poppins, sans-serif; background:#f4f4f4; padding:20px;">
-                      <div style="max-width:600px; margin:auto; background:#fff; border-radius:8px; padding:20px;">
-                        <h2 style="color:#333;">New Chat Message</h2>
-                        <p>You’ve received a new message from a user:</p>
-                        <blockquote style="background:#f9f9f9; padding:10px; border-left:4px solid #007bff;">
-                          ${text}
-                        </blockquote>
-                        <p><a href="${process.env.APP_URL}/admin/chat/${chatId}" style="color:#007bff;">View Chat</a></p>
-                        <p style="font-size:12px; color:#777;">This is an automated message from your app.</p>
-                      </div>
-                    </body>
-                  </html>
-                `;
+              const emailTemplate = `
+                <html>
+                  <body style="font-family: Poppins, sans-serif; background:#f4f4f4; padding:20px;">
+                    <div style="max-width:600px; margin:auto; background:#fff; border-radius:8px; padding:20px;">
+                      <h2 style="color:#333;">New Chat Message</h2>
+                      <p>You’ve received a new message from <b>${userData?.email || "a user"}</b>:</p>
+                      <blockquote style="background:#f9f9f9; padding:10px; border-left:4px solid #007bff;">
+                        ${text}
+                      </blockquote>
+                      <p><a href="${process.env.APP_URL}/admin/chat/${chatId}" style="color:#007bff;">View Chat</a></p>
+                      <p style="font-size:12px; color:#777;">This is an automated message from your app.</p>
+                    </div>
+                  </body>
+                </html>
+              `;
 
-                await transporter.sendMail({
-                  from: process.env.EMAIL_USER,
-                  to: adminData.email,
-                  subject: "New Chat Message",
-                  html: emailTemplate,
-                });
+              await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: adminData.email,
+                subject: "New Chat Message",
+                html: emailTemplate,
+              });
 
-                console.log("✅ Email sent successfully to admin:", adminData.email);
-
-                // === Save to Notifications Collection ===
-                await addDoc(collection(db, "notifications"), {
-                  title: "New Chat Message",
-                  message: `You received a new message: "${text}"`,
-                  role: "admin",
-                  userId: adminId,
-                  type: "chat",
-                  createdAt: serverTimestamp(),
-                  read: false,
-                });
-              } catch (emailErr) {
-                console.error("❌ Email sending error:", emailErr);
-              }
+              console.log("✅ Email sent successfully to admin:", adminData.email);
+            } catch (emailErr) {
+              console.error("❌ Email sending error:", emailErr);
             }
           }
+
+          // === Save Notifications ===
+          const notificationsRef = collection(db, "notifications");
+
+          // For Admin
+          await addDoc(notificationsRef, {
+            title: "New Chat Message",
+            message: `You received a new message: "${text}"`,
+            role: "admin",
+            userId: adminId,
+            type: "chat",
+            createdAt: serverTimestamp(),
+            read: false,
+          });
+
+          // For User
+          await addDoc(notificationsRef, {
+            title: "Message Sent",
+            message: `Your message to ${adminData?.email || "the admin"} has been sent successfully.`,
+            role: userData?.role || "user",
+            userId: senderId,
+            type: "chat",
+            createdAt: serverTimestamp(),
+            read: false,
+          });
         }
       }
     }

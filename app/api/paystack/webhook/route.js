@@ -1,6 +1,6 @@
 import { db } from "@/lib/firebase";
 import crypto from "crypto";
-import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
 export async function POST(req) {
@@ -37,6 +37,13 @@ export async function POST(req) {
         }
         const prevData = bookingSnap.data();
 
+        // Fetch user info for notifications and email
+        const userRef = doc(db, "users", userId);
+        const userSnap = await getDoc(userRef);
+        const userData = userSnap.exists() ? userSnap.data() : {};
+        const userEmail = userData.email;
+        const userName = userData.fullName || "User";
+
         // Update booking status in user's collection
         await updateDoc(bookingRef, {
           status: status === "success" ? "success" : "failed",
@@ -48,7 +55,7 @@ export async function POST(req) {
         // Update/add to allBookings collection, keeping previous data
         const allBookingsRef = doc(db, "allBookings", bookingId);
         await updateDoc(allBookingsRef, {
-          ...prevData, // keep all previous fields
+          ...prevData,
           status: status === "success" ? "success" : "failed",
           reference,
           updatedAt: new Date(),
@@ -64,13 +71,7 @@ export async function POST(req) {
         });
         console.log("✅ Booking updated/created in allBookings:", bookingId);
 
-        // Fetch user info for notifications
-        const userRef = doc(db, "users", userId);
-        const userSnap = await getDoc(userRef);
-        const userData = userSnap.exists() ? userSnap.data() : {};
-        const userEmail = userData.email;
-        const userName = userData.fullName || "User";
-
+        // Only send notifications & email if success
         if (status === "success") {
           // Admin notification
           await addDoc(collection(db, "notifications"), {
@@ -96,9 +97,9 @@ export async function POST(req) {
             read: false,
           });
 
-          // Send booking email
-          const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "1h" });
+          // Generate JWT token for internal API call
           if (userEmail) {
+            const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "1h" });
             try {
               const emailRes = await fetch(
                 `${process.env.NEXT_PUBLIC_FRONTEND_URL}/api/emails/send-booking-email`,

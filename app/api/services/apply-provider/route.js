@@ -16,12 +16,12 @@ export async function POST(req) {
       try {
         const token = authHeader.split(" ")[1];
         decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("✅ Token verified:", decoded);
+        console.log("Token verified:", decoded);
       } catch (err) {
-        console.warn("⚠️ Invalid token:", err.message);
+        console.warn("Invalid token:", err.message);
       }
     } else {
-      console.log("ℹ️ No Authorization header found — continuing without token.");
+      console.log("No Authorization header found — continuing without token.");
     }
 
     const { name, email, phone, serviceType, description, isStudent } = body;
@@ -46,7 +46,7 @@ export async function POST(req) {
       updatedAt: serverTimestamp(),
     });
 
-    console.log("✅ Service provider saved with ID:", docRef.id);
+    console.log("Service provider saved with ID:", docRef.id);
 
     return new Response(
       JSON.stringify({
@@ -57,7 +57,7 @@ export async function POST(req) {
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("❌ Submission error:", err);
+    console.error("Submission error:", err);
     return new Response(
       JSON.stringify({
         success: false,

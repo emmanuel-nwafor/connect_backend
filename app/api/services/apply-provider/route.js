@@ -1,70 +1,91 @@
 // /api/services/apply-provider/route.js
 import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  getDoc,
+  doc,
+  query,
+  orderBy,
+  serverTimestamp,
+} from "firebase/firestore";
 import jwt from "jsonwebtoken";
 
 export async function POST(req) {
   try {
-    console.log("Incoming request to /api/services/apply-provider");
-
-    const authHeader = req.headers.get("authorization");
+    const auth = req.headers.get("authorization");
     const body = await req.json();
-    console.log(" Request body:", body);
-
-    let decoded = null;
-    if (authHeader?.startsWith("Bearer ")) {
-      try {
-        const token = authHeader.split(" ")[1];
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("Token verified:", decoded);
-      } catch (err) {
-        console.warn("Invalid token:", err.message);
-      }
-    } else {
-      console.log("No Authorization header found — continuing without token.");
+    let userId = null;
+    if (auth?.startsWith("Bearer ")) {
+      const token = auth.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      userId = decoded.userId;
     }
 
     const { name, email, phone, serviceType, description, isStudent } = body;
-
-    if (!name || !email || !phone || !serviceType || !description) {
+    if (!name || !email || !phone || !serviceType || !description)
       return new Response(
-        JSON.stringify({ success: false, message: "All fields are required" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, message: "Fill all fields" }),
+        { status: 400 }
       );
-    }
 
-    // Save to Firestore
-    const docRef = await addDoc(collection(db, "serviceProviders"), {
+    const ref = await addDoc(collection(db, "serviceProviders"), {
       name,
       email,
       phone,
       serviceType,
       description,
       isStudent: !!isStudent,
-      userId: decoded?.userId || null,
+      userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
 
-    console.log("Service provider saved with ID:", docRef.id);
+    return new Response(
+      JSON.stringify({ success: true, id: ref.id }),
+      { status: 201 }
+    );
+  } catch (e) {
+    return new Response(JSON.stringify({ success: false, error: e.message }), {
+      status: 500,
+    });
+  }
+}
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Application submitted successfully",
-        id: docRef.id,
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+export async function GET(req) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    // Fetch one
+    if (id) {
+      const snap = await getDoc(doc(db, "serviceProviders", id));
+      if (!snap.exists())
+        return new Response(
+          JSON.stringify({ success: false, message: "Not found" }),
+          { status: 404 }
+        );
+      return new Response(
+        JSON.stringify({ success: true, data: { id: snap.id, ...snap.data() } }),
+        { status: 200 }
+      );
+    }
+
+    // Fetch all
+    const q = query(
+      collection(db, "serviceProviders"),
+      orderBy("createdAt", "desc")
     );
-  } catch (err) {
-    console.error("Submission error:", err);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: "Something went wrong",
-        error: err.message,
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    const snap = await getDocs(q);
+    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    return new Response(JSON.stringify({ success: true, data: list }), {
+      status: 200,
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ success: false, error: e.message }), {
+      status: 500,
+    });
   }
 }

@@ -5,11 +5,11 @@ import jwt from "jsonwebtoken";
 
 export async function POST(req) {
   try {
-    console.log("📨 Incoming request to /api/services/apply-provider");
+    console.log("Incoming request to /api/services/apply-provider");
 
     const authHeader = req.headers.get("authorization");
     const body = await req.json();
-    console.log("📩 Request body:", body);
+    console.log(" Request body:", body);
 
     let decoded = null;
     if (authHeader?.startsWith("Bearer ")) {

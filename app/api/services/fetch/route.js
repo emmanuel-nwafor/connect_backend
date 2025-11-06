@@ -1,16 +1,33 @@
 // /api/services/fetch/route.js
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import jwt from "jsonwebtoken";
 
-export async function GET() {
+export async function GET(req) {
   try {
     console.log("Incoming request to /api/services/fetch");
 
-    // Fetch all service providers without ordering or auth
-    const snapshot = await getDocs(collection(db, "serviceProviders"));
+    // Check for optional JWT
+    const authHeader = req.headers.get("authorization");
+    let decoded = null;
+
+    if (authHeader?.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.split(" ")[1];
+        decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log("Token verified for user:", decoded?.userId || "Unknown");
+      } catch (err) {
+        console.warn("Invalid token:", err.message);
+      }
+    } else {
+      console.log("No Authorization header — continuing as guest.");
+    }
+
+    // Fetch all service providers
+    const q = query(collection(db, "serviceProviders"), orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
-      console.log("No service providers found.");
       return new Response(
         JSON.stringify({
           success: true,
@@ -32,6 +49,7 @@ export async function GET() {
       JSON.stringify({
         success: true,
         data: providers,
+        user: decoded ? { id: decoded.userId, email: decoded.email } : null,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );

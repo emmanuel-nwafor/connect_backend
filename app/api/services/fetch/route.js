@@ -1,52 +1,27 @@
 // /api/services/fetch/route.js
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import jwt from "jsonwebtoken";
+import { collection, getDocs } from "firebase/firestore";
 
-export async function GET(req) {
+export async function GET() {
   try {
     console.log("Incoming request to /api/services/fetch");
 
-    // Verify token
-    const authHeader = req.headers.get("authorization");
-    let decoded = null;
+    // Fetch all service providers without ordering or auth
+    const snapshot = await getDocs(collection(db, "serviceProviders"));
 
-    if (authHeader?.startsWith("Bearer ")) {
-      try {
-        const token = authHeader.split(" ")[1];
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("Token verified for user:", decoded);
-      } catch (err) {
-        console.warn("Invalid token:", err.message);
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: "Invalid or expired token",
-          }),
-          { status: 401, headers: { "Content-Type": "application/json" } }
-        );
-      }
-    } else {
-      console.log("No Authorization header found.");
+    if (snapshot.empty) {
+      console.log("No service providers found.");
       return new Response(
         JSON.stringify({
-          success: false,
-          message: "Authorization token missing",
+          success: true,
+          data: [],
+          message: "No service providers available",
         }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
+        { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Fetch all service providers
-    console.log("Fetching all service providers...");
-
-    const q = query(
-      collection(db, "serviceProviders"),
-      orderBy("createdAt", "desc")
-    );
-    const querySnapshot = await getDocs(q);
-
-    const providers = querySnapshot.docs.map((doc) => ({
+    const providers = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
@@ -57,7 +32,6 @@ export async function GET(req) {
       JSON.stringify({
         success: true,
         data: providers,
-        userId: decoded.userId || null,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );

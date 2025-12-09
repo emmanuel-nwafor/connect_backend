@@ -9,8 +9,7 @@ export async function GET(request, { params }) {
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Missing property ID" },
-        { status: 400 },
-        console.log(error)
+        { status: 400 }
       );
     }
 
@@ -20,8 +19,7 @@ export async function GET(request, { params }) {
     if (!docSnap.exists()) {
       return NextResponse.json(
         { success: false, error: "Property not found" },
-        { status: 404 },
-        console.log(error)
+        { status: 404 }
       );
     }
 
@@ -30,11 +28,11 @@ export async function GET(request, { params }) {
       lodge: { id: docSnap.id, ...docSnap.data() },
     });
   } catch (error) {
-    console.error("Error fetching property:", error);
+    console.error("Error fetching lodge:", error);
+
     return NextResponse.json(
       { success: false, error: "Internal Server Error" },
-      { status: 500 },
-      console.log(error)
+      { status: 500 }
     );
   }
 }

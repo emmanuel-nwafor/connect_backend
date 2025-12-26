@@ -1,10 +1,13 @@
+// app/api/all-listings/[id]/route.js
+
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { NextResponse } from "next/server";
 
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    // Safely access params (in JS, params can sometimes be undefined in edge cases)
+    const id = params?.id;
 
     if (!id) {
       return NextResponse.json(
@@ -23,9 +26,11 @@ export async function GET(request, { params }) {
       );
     }
 
+    const lodgeData = docSnap.data();
+
     return NextResponse.json({
       success: true,
-      lodge: { id: docSnap.id, ...docSnap.data() },
+      lodge: { id: docSnap.id, ...lodgeData },
     });
   } catch (error) {
     console.error("Error fetching lodge:", error);
